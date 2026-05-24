@@ -20,5 +20,4 @@ plan.md
 notebook.ipynb
 a.py
 
-#results
-data/
+data/trained_models/

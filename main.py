@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-import argparse
 from pathlib import Path
 
 import yaml
 
 from src.core import ui
-from src.dataset.augmentation import dataset_judge
-from src.dataset.build import build_dataset
-from src.dataset.view_textual import view_dataset
 
 
 def interactive_menu() -> str:
@@ -37,32 +33,34 @@ def load_config(config_path: Path) -> dict[str, object]:
         return yaml.safe_load(handle) or {}
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="HalluCodeDetection")
-    parser.add_argument("--config", type=str, default="config.yaml")
-    parser.add_argument("--build_dataset", action="store_true")
-    parser.add_argument("--dataset_judge", action="store_true")
-    parser.add_argument("--model_name", type=str, default=None)
-    parser.add_argument("--train_model", action="store_true")
-    parser.add_argument("--evaluate", action="store_true")
-    parser.add_argument("--view_dataset", action="store_true")
-    args = parser.parse_args()
-
+def main(args) -> None:
     config = load_config(Path(args.config))
 
     if args.build_dataset:
+        from src.dataset.build import build_dataset
+
         build_dataset(config)
 
     if args.dataset_judge:
+        from src.dataset.augmentation import dataset_judge
+
         dataset_judge(config, model_name=args.model_name)
 
     if args.train_model:
-        ui.console.print("Train model not implemented yet.")
+        with ui.console.status("Loading training dependencies..."):
+            from src.training import train_model
+
+        train_model(config, model_name=args.model_name)
 
     if args.evaluate:
-        ui.console.print("Evaluate not implemented yet.")
+        with ui.console.status("Loading evaluation dependencies..."):
+            from src.evaluations import evaluate_models
+
+        evaluate_models(config)
 
     if args.view_dataset:
+        from src.dataset.view_textual import view_dataset
+
         view_dataset(config)
         return
         
@@ -72,18 +70,40 @@ def main() -> None:
     selection = interactive_menu()
     
     if selection == "build_dataset":
+        from src.dataset.build import build_dataset
+
         build_dataset(config)
     elif selection == "dataset_judge":
+        from src.dataset.augmentation import dataset_judge
+
         dataset_judge(config, model_name=None)
     elif selection == "train_model":
-        ui.console.print("Train model not implemented yet.")
+        with ui.console.status("Loading training dependencies..."):
+            from src.training import train_model
+
+        train_model(config, model_name=None)
     elif selection == "evaluate":
-        ui.console.print("Evaluate not implemented yet.")
+        with ui.console.status("Loading evaluation dependencies..."):
+            from src.evaluations import evaluate_models
+
+        evaluate_models(config)
     elif selection == "view_dataset":
+        from src.dataset.view_textual import view_dataset
+
         view_dataset(config)
     else:
         ui.console.print("Bye.")
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="HalluCodeDetection")
+    parser.add_argument("--config", type=str, default="config.yaml")
+    parser.add_argument("--build_dataset", action="store_true")
+    parser.add_argument("--dataset_judge", action="store_true")
+    parser.add_argument("--model_name", type=str, default=None)
+    parser.add_argument("--train_model", action="store_true")
+    parser.add_argument("--evaluate", action="store_true")
+    parser.add_argument("--view_dataset", action="store_true")
+    main(parser.parse_args())

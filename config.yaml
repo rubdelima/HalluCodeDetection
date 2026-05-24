@@ -30,3 +30,62 @@ dataset_build:
   overwrite_results: false
   
   results_dir: data/results/
+
+# dataset_load: fraction of the judged dataset to use (0-1).
+# recomendado: 0.3-1.0 para testes rapidos vs. treino completo.
+dataset_load: 1.0
+# correct_size: fraction of "correct" samples to keep (0-1).
+# recomendado: 0.2-0.6 para reduzir desbalanceamento.
+correct_size: 0.5
+# random_seed: seed for shuffling and split reproducibility.
+random_seed: 42
+# test_size: fraction reserved for evaluation split (0-1).
+# recomendado: 0.1-0.2.
+validation_size: 0.1
+test_size: 0.2
+
+training:
+  # model: Hugging Face model id used for SFT.
+  # recomendado: google/gemma-3-4b-it ou google/gemma-3-1b-it.
+  model: google/gemma-3-4b-it
+
+  # use_qlora: list of booleans for grid search.
+  # true = 4-bit QLoRA, false = LoRA full precision.
+  use_qlora: [true]
+
+  # lora_r: list of rank values for LoRA adapters.
+  # recomendado: [8, 16, 32].
+  lora_r: [16]
+  # lora_alpha: list of alpha values (scales LoRA updates).
+  # recomendado: [8, 16, 32].
+  lora_alpha: [16]
+  # lora_dropout: list of dropout values.
+  # recomendado: [0.0, 0.05, 0.1].
+  lora_dropout: [0.05]
+  # learning_rate: list of learning rates for grid search.
+  # recomendado: [5e-5, 2e-5, 1e-4].
+  learning_rate: [5e-5]
+
+  # model_output_dir: root folder to store each trained run.
+  model_output_dir: data/trained_models/
+
+  # max_salved_models: maximum number of saved models kept on disk.
+  # recomendado: 3-10.
+  max_salved_models: 5
+
+evaluation:
+  checkpoint_interval: 10
+
+  ollama_models:
+    - gpt-oss:20b
+    - gemma3:4b
+    - gemma3:1b
+    - gemma4:e4b
+    - qwen2.5-coder:7b
+  
+  gemma_models:
+    - google/gemma-3-4b-it
+    - google/gemma-3-1b-it
+  
+  lora_models: []
+  

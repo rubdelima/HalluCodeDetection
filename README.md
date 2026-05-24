@@ -66,6 +66,8 @@ uv run main.py --train_model
 Phase 4 - Evaluation
 - Compares base models vs fine-tuned models.
 - Reports how well the adaptation improved detection.
+- Loads models by type, closing the current handler before switching to the next model.
+- Streams each model answer in the spinner and refreshes a live summary table after every model.
 
 Run Phase 4:
 

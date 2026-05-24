@@ -8,7 +8,6 @@ class SolveExample(Protocol):
     prompt: str
     function_signature: str | None
 
-
 class BaseModelHandler(ABC):
     @abstractmethod
     def __init__(self, model: str) -> None:
@@ -27,4 +26,25 @@ class BaseModelHandler(ABC):
     ) -> str:
         raise NotImplementedError
     
+    @abstractmethod
+    def generate_judge(
+        self,
+        example_prompt: str,
+        code: str,
+        level: str,
+        error: str,
+        options: dict[str, object] | None,
+        spinner_length: int,
+    ) -> str:
+        raise NotImplementedError
+    
+    @abstractmethod
+    def analyze_hallucination(
+        self,
+        example_prompt: str,
+        code: str,
+        options: dict[str, object] | None,
+        spinner_length: int,
+    ) -> str:
+        raise NotImplementedError
     

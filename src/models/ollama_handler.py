@@ -5,7 +5,13 @@ import ollama
 
 from src.core import ui
 from src.models.base import BaseModelHandler, SolveExample
-from src.models.prompts import build_judge_prompt, build_solve_prompt, judge_system_prompt, solve_problem_system
+from src.models.prompts import (
+    analyse_hallucination_prompt,
+    build_judge_prompt,
+    build_solve_prompt,
+    judge_system_prompt,
+    solve_problem_system,
+)
 
 
 class OllamaHandler(BaseModelHandler):
@@ -55,6 +61,32 @@ class OllamaHandler(BaseModelHandler):
         messages = [
             {"role": "system", "content": judge_system_prompt},
             {"role": "user", "content": user_prompt},
+        ]
+        stream = ollama.chat(
+            model=self.model,
+            messages=messages,
+            stream=True,
+            options=options or None,
+            keep_alive="-1m",
+        )
+        chunk_iter = (chunk.model_dump() for chunk in stream)
+        return ui.stream_chat_chunks(chunk_iter, spinner_length)
+
+    def analyze_hallucination(
+        self,
+        example_prompt: str,
+        code: str,
+        options: dict[str, object] | None,
+        spinner_length: int,
+    ) -> str:
+        messages = [
+            {
+                "role": "system",
+                "content": analyse_hallucination_prompt.format(
+                    problem_description=example_prompt
+                ),
+            },
+            {"role": "user", "content": code},
         ]
         stream = ollama.chat(
             model=self.model,
