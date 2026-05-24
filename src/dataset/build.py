@@ -4,10 +4,11 @@ import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, cast
 
 from src.core import ui
-from src.dataset.load import load_mbpp_split, sample_examples
+from src.dataset.load import MBPPExample, load_mbpp_split, sample_examples
+from src.dataset.types import BaseResultRow
 from src.evaluations.tests import run_tests
 from src.models.ollama_handler import OllamaHandler
 
@@ -27,20 +28,20 @@ def results_file_path(results_dir: Path) -> Path:
     return results_dir / "dataset_base.json"
 
 
-def load_existing_results(path: Path) -> list[dict]:
+def load_existing_results(path: Path) -> list[BaseResultRow]:
     if not path.exists():
         return []
-    results: list[dict] = []
+    results: list[BaseResultRow] = []
     with path.open("r", encoding="utf-8") as handle:
         for line in handle:
             line = line.strip()
             if not line:
                 continue
-            results.append(json.loads(line))
+            results.append(cast(BaseResultRow, json.loads(line)))
     return results
 
 
-def save_results_jsonl(path: Path, results: Iterable[dict], overwrite: bool) -> None:
+def save_results_jsonl(path: Path, results: Iterable[BaseResultRow], overwrite: bool) -> None:
     if overwrite and path.exists():
         path.unlink()
     with path.open("a", encoding="utf-8") as handle:
@@ -48,7 +49,11 @@ def save_results_jsonl(path: Path, results: Iterable[dict], overwrite: bool) -> 
             handle.write(json.dumps(item, ensure_ascii=True) + "\n")
 
 
-def build_task_keys(models: list[str], examples: Iterable, existing: set[TaskKey]) -> list[TaskKey]:
+def build_task_keys(
+    models: list[str],
+    examples: Iterable[MBPPExample],
+    existing: set[TaskKey],
+) -> list[TaskKey]:
     pending: list[TaskKey] = []
     for model in models:
         for example in examples:
@@ -58,7 +63,7 @@ def build_task_keys(models: list[str], examples: Iterable, existing: set[TaskKey
     return pending
 
 
-def count_levels(results: Iterable[dict]) -> dict[str, int]:
+def count_levels(results: Iterable[BaseResultRow]) -> dict[str, int]:
     counts = {
         "correct": 0,
         "functional_error": 0,
@@ -66,16 +71,16 @@ def count_levels(results: Iterable[dict]) -> dict[str, int]:
         "syntax_error": 0,
     }
     for item in results:
-        level = item.get("level")
+        level = item["level"]
         if level in counts:
             counts[level] += 1
     return counts
 
 
-def count_levels_by_model(results: Iterable[dict]) -> dict[str, dict[str, int]]:
+def count_levels_by_model(results: Iterable[BaseResultRow]) -> dict[str, dict[str, int]]:
     model_counts: dict[str, dict[str, int]] = {}
     for item in results:
-        model = item.get("model", "")
+        model = item["model"]
         if model not in model_counts:
             model_counts[model] = {
                 "correct": 0,
@@ -83,23 +88,54 @@ def count_levels_by_model(results: Iterable[dict]) -> dict[str, dict[str, int]]:
                 "runtime_error": 0,
                 "syntax_error": 0,
             }
-        level = item.get("level")
+        level = item["level"]
         if level in model_counts[model]:
             model_counts[model][level] += 1
     return model_counts
 
 
-def build_dataset(config: dict) -> None:
-    build_cfg = config.get("dataset_build", {})
-    dataset_fraction = float(build_cfg.get("dataset_load", 1.0))
-    dataset_base = build_cfg.get("dataset_base", ["mbpp"])
-    models = list(build_cfg.get("models", []))
-    spinner_length = int(build_cfg.get("spinner_length", 600))
-    timeout_seconds = int(build_cfg.get("tests_timeout", 30))
-    checkpoint_interval = int(build_cfg.get("checkpoint_interval", 10))
+def build_dataset(config: dict[str, object]) -> None:
+    build_cfg = cast(dict[str, object], config.get("dataset_build", {}))
+
+    def to_float(value: object, default: float) -> float:
+        if isinstance(value, (int, float)):
+            return float(value)
+        if isinstance(value, str):
+            try:
+                return float(value)
+            except ValueError:
+                return default
+        return default
+
+    def to_int(value: object, default: int) -> int:
+        if isinstance(value, int):
+            return value
+        if isinstance(value, float):
+            return int(value)
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError:
+                return default
+        return default
+
+    def to_str_list(value: object, default: list[str]) -> list[str]:
+        if isinstance(value, list) and all(isinstance(item, str) for item in value):
+            return value
+        return default
+
+    dataset_fraction = to_float(build_cfg.get("dataset_load", 1.0), 1.0)
+    dataset_base = to_str_list(build_cfg.get("dataset_base", ["mbpp"]), ["mbpp"])
+    models = to_str_list(build_cfg.get("models", []), [])
+    spinner_length = to_int(build_cfg.get("spinner_length", 600), 600)
+    timeout_seconds = to_int(build_cfg.get("tests_timeout", 30), 30)
+    checkpoint_interval = to_int(build_cfg.get("checkpoint_interval", 10), 10)
     overwrite_results = bool(build_cfg.get("overwrite_results", False))
-    results_dir = Path(build_cfg.get("results_dir", "data/"))
-    model_options = build_cfg.get("model_config", {})
+    results_dir = Path(str(build_cfg.get("results_dir", "data/")))
+    model_options_value = build_cfg.get("model_config")
+    if not isinstance(model_options_value, dict):
+        model_options_value = {}
+    model_options = cast(dict[str, object], model_options_value)
 
     if "mbpp" not in dataset_base:
         raise ValueError("Only mbpp is supported in this phase.")
@@ -109,7 +145,7 @@ def build_dataset(config: dict) -> None:
     ensure_results_dir(results_dir)
     results_path = results_file_path(results_dir)
     existing_results = [] if overwrite_results else load_existing_results(results_path)
-    
+
     existing_keys = {
         TaskKey(r["benchmark"], int(r["benchmark_id"]), r["model"])
         for r in existing_results
@@ -127,7 +163,7 @@ def build_dataset(config: dict) -> None:
 
     counts = count_levels(existing_results)
     model_counts = count_levels_by_model(existing_results)
-    pending_write: list[dict] = []
+    pending_write: list[BaseResultRow] = []
     model_handler: OllamaHandler | None = None
     current_model: str | None = None
 
@@ -158,6 +194,8 @@ def build_dataset(config: dict) -> None:
                     model_handler = OllamaHandler(task_key.model)
                     current_model = task_key.model
                 
+                if model_handler is None:
+                    raise RuntimeError("Model handler not initialized")
                 code = model_handler.generate_code(example, model_options, spinner_length)
                 
                 level, error_text = run_tests(
@@ -176,7 +214,7 @@ def build_dataset(config: dict) -> None:
 
             counts[level] += 1
             model_counts[task_key.model][level] += 1
-            result = {
+            result: BaseResultRow = {
                 "benchmark": task_key.benchmark,
                 "benchmark_id": task_key.benchmark_id,
                 "model": task_key.model,

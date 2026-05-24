@@ -3,12 +3,16 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from typing import cast
+
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
+from textual.coordinate import Coordinate
+from textual.widgets.data_table import RowKey
 from textual.widgets import DataTable, Footer, Header, Input, Static
 
 
-class DatasetViewer(App):
+class DatasetViewer(App[None]):
     CSS = """
     Screen {
         layout: vertical;
@@ -52,10 +56,10 @@ class DatasetViewer(App):
         ("q", "quit", "Quit"),
     ]
 
-    def __init__(self, results: list[dict]) -> None:
+    def __init__(self, results: list[dict[str, object]]) -> None:
         super().__init__()
         self.results = results
-        self.filtered_results: list[dict] = list(results)
+        self.filtered_results: list[dict[str, object]] = list(results)
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -78,8 +82,8 @@ class DatasetViewer(App):
         table.show_cursor = True
         table.focus()
         if self.filtered_results:
-            table.cursor_coordinate = (0, 0)
-            self._select_row_key("0")
+            table.cursor_coordinate = Coordinate(0, 0)
+            self._select_row_key(cast(RowKey, "0"))
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         self._select_row_key(event.row_key)
@@ -88,7 +92,9 @@ class DatasetViewer(App):
         self._select_row_key(event.row_key)
 
     def on_data_table_cell_selected(self, event: DataTable.CellSelected) -> None:
-        self._select_row_key(event.row_key)
+        table = self.query_one("#table", DataTable)
+        row_key, _ = table.coordinate_to_cell_key(event.coordinate)
+        self._select_row_key(row_key)
 
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id not in {"filter_model", "filter_level", "filter_id"}:
@@ -135,7 +141,7 @@ class DatasetViewer(App):
         filter_level = self.query_one("#filter_level", Input).value.strip().lower()
         filter_id = self.query_one("#filter_id", Input).value.strip().lower()
 
-        def matches(item: dict) -> bool:
+        def matches(item: dict[str, object]) -> bool:
             if filter_model and filter_model not in str(item.get("model", "")).lower():
                 return False
             if filter_level and filter_level not in str(item.get("level", "")).lower():
@@ -149,7 +155,7 @@ class DatasetViewer(App):
         detail_text = self.query_one("#detail_text", Static)
         detail_text.update("Select a row to view details.")
 
-    def _select_row_key(self, row_key: str | None) -> None:
+    def _select_row_key(self, row_key: RowKey | None) -> None:
         if row_key is None:
             return
         try:
@@ -160,10 +166,10 @@ class DatasetViewer(App):
             return
         self._render_details(self.filtered_results[index])
 
-    def _render_details(self, item: dict) -> None:
+    def _render_details(self, item: dict[str, object]) -> None:
         detail_text = self.query_one("#detail_text", Static)
-        error = item.get("error") or ""
-        code = item.get("code") or ""
+        error = str(item.get("error") or "")
+        code = str(item.get("code") or "")
         detail = (
             f"Model: {item.get('model')}\n"
             f"Benchmark: {item.get('benchmark')}\n"
@@ -175,10 +181,10 @@ class DatasetViewer(App):
         detail_text.update(detail)
 
 
-def _load_results(path: Path) -> list[dict]:
+def _load_results(path: Path) -> list[dict[str, object]]:
     if not path.exists():
         return []
-    results: list[dict] = []
+    results: list[dict[str, object]] = []
     with path.open("r", encoding="utf-8") as handle:
         for line in handle:
             line = line.strip()
@@ -188,9 +194,9 @@ def _load_results(path: Path) -> list[dict]:
     return results
 
 
-def view_dataset(config: dict) -> None:
-    build_cfg = config.get("dataset_build", {})
-    results_dir = Path(build_cfg.get("results_dir", "data/"))
+def view_dataset(config: dict[str, object]) -> None:
+    build_cfg = cast(dict[str, object], config.get("dataset_build", {}))
+    results_dir = Path(str(build_cfg.get("results_dir", "data/")))
     results_path = results_dir / "dataset_base.json"
     results = _load_results(results_path)
     if not results:

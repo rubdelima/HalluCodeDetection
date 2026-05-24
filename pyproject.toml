@@ -19,3 +19,15 @@ dependencies = [
     "transformers>=5.8.1",
     "textual>=0.80.0",
 ]
+
+[tool.mypy]
+ignore_missing_imports = true
+python_version = "3.12"
+warn_unused_ignores = true
+warn_return_any = true
+disallow_any_generics = true
+
+[dependency-groups]
+dev = [
+    "mypy>=2.1.0",
+]

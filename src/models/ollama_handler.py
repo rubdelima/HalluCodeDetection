@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import subprocess
-
 import ollama
 
 from src.core import ui
-from src.models.base import BaseModelHandler
-from src.models.prompts import build_solve_prompt, solve_problem_system
+from src.models.base import BaseModelHandler, SolveExample
+from src.models.prompts import build_judge_prompt, build_solve_prompt, judge_system_prompt, solve_problem_system
 
 
 class OllamaHandler(BaseModelHandler):
@@ -24,8 +23,8 @@ class OllamaHandler(BaseModelHandler):
 
     def generate_code(
         self,
-        example: object,
-        options: dict | None,
+        example: SolveExample,
+        options: dict[str, object] | None,
         spinner_length: int,
     ) -> str:
         prompt = build_solve_prompt(example.prompt, example.function_signature)
@@ -40,4 +39,29 @@ class OllamaHandler(BaseModelHandler):
             options=options or None,
             keep_alive="-1m",
         )
-        return ui.stream_chat_chunks(stream, spinner_length)
+        chunk_iter = (chunk.model_dump() for chunk in stream)
+        return ui.stream_chat_chunks(chunk_iter, spinner_length)
+
+    def generate_judge(
+        self,
+        example_prompt: str,
+        code: str,
+        level: str,
+        error: str,
+        options: dict[str, object] | None,
+        spinner_length: int,
+    ) -> str:
+        user_prompt = build_judge_prompt(example_prompt, code, level, error)
+        messages = [
+            {"role": "system", "content": judge_system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        stream = ollama.chat(
+            model=self.model,
+            messages=messages,
+            stream=True,
+            options=options or None,
+            keep_alive="-1m",
+        )
+        chunk_iter = (chunk.model_dump() for chunk in stream)
+        return ui.stream_chat_chunks(chunk_iter, spinner_length)

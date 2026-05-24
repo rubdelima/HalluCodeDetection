@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Protocol
+
+
+class SolveExample(Protocol):
+    prompt: str
+    function_signature: str | None
 
 
 class BaseModelHandler(ABC):
@@ -16,8 +21,8 @@ class BaseModelHandler(ABC):
     @abstractmethod
     def generate_code(
         self,
-        example: Any,
-        options: dict | None,
+        example: SolveExample,
+        options: dict[str, object] | None,
         spinner_length: int,
     ) -> str:
         raise NotImplementedError

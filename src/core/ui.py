@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Iterable, Mapping
 
 from rich.console import Console, Group
 from rich.live import Live
@@ -9,6 +9,7 @@ from rich.progress import (
     BarColumn,
     Progress,
     SpinnerColumn,
+    TaskID,
     TextColumn,
     TimeElapsedColumn,
     TimeRemainingColumn,
@@ -48,7 +49,7 @@ def render_status_table(model_counts: dict[str, dict[str, int]]) -> Table:
     return table
 
 
-def build_progress(total: int, counts: dict[str, int]) -> tuple[Progress, int]:
+def build_progress(total: int, counts: dict[str, int]) -> tuple[Progress, TaskID]:
     progress = Progress(
         SpinnerColumn(),
         TextColumn("{task.fields[model]}"),
@@ -79,7 +80,7 @@ def build_progress(total: int, counts: dict[str, int]) -> tuple[Progress, int]:
 
 
 def stream_chat_chunks(
-    chunk_iter: Iterable[dict],
+    chunk_iter: Iterable[Mapping[str, object]],
     spinner_length: int,
 ) -> str:
     content_buffer: list[str] = []
@@ -102,9 +103,15 @@ def stream_chat_chunks(
         transient=True,
     ) as live:
         for chunk in chunk_iter:
-            message = chunk.get("message", {})
-            thinking = message.get("thinking") or chunk.get("thinking")
-            content = message.get("content", "")
+            message_obj = chunk.get("message")
+            message = message_obj if isinstance(message_obj, dict) else {}
+            thinking_obj = message.get("thinking")
+            thinking = thinking_obj if isinstance(thinking_obj, str) else None
+            if thinking is None:
+                fallback_thinking = chunk.get("thinking")
+                thinking = fallback_thinking if isinstance(fallback_thinking, str) else None
+            content_obj = message.get("content")
+            content = content_obj if isinstance(content_obj, str) else ""
 
             if thinking:
                 if not show_thinking:

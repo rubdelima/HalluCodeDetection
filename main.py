@@ -6,6 +6,7 @@ from pathlib import Path
 import yaml
 
 from src.core import ui
+from src.dataset.augmentation import dataset_judge
 from src.dataset.build import build_dataset
 from src.dataset.view_textual import view_dataset
 
@@ -29,7 +30,7 @@ def interactive_menu() -> str:
     return options.get(choice, "")
 
 
-def load_config(config_path: Path) -> dict:
+def load_config(config_path: Path) -> dict[str, object]:
     if not config_path.exists():
         raise FileNotFoundError(f"Config not found: {config_path}")
     with config_path.open("r", encoding="utf-8") as handle:
@@ -41,6 +42,7 @@ def main() -> None:
     parser.add_argument("--config", type=str, default="config.yaml")
     parser.add_argument("--build_dataset", action="store_true")
     parser.add_argument("--dataset_judge", action="store_true")
+    parser.add_argument("--model_name", type=str, default=None)
     parser.add_argument("--train_model", action="store_true")
     parser.add_argument("--evaluate", action="store_true")
     parser.add_argument("--view_dataset", action="store_true")
@@ -52,7 +54,7 @@ def main() -> None:
         build_dataset(config)
 
     if args.dataset_judge:
-        ui.console.print("Dataset judge not implemented yet.")
+        dataset_judge(config, model_name=args.model_name)
 
     if args.train_model:
         ui.console.print("Train model not implemented yet.")
@@ -72,7 +74,7 @@ def main() -> None:
     if selection == "build_dataset":
         build_dataset(config)
     elif selection == "dataset_judge":
-        ui.console.print("Dataset judge not implemented yet.")
+        dataset_judge(config, model_name=None)
     elif selection == "train_model":
         ui.console.print("Train model not implemented yet.")
     elif selection == "evaluate":

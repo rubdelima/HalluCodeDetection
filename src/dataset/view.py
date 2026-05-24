@@ -6,10 +6,10 @@ from pathlib import Path
 from src.core import ui
 
 
-def _load_results(path: Path) -> list[dict]:
+def _load_results(path: Path) -> list[dict[str, object]]:
     if not path.exists():
         return []
-    results: list[dict] = []
+    results: list[dict[str, object]] = []
     with path.open("r", encoding="utf-8") as handle:
         for line in handle:
             line = line.strip()
@@ -19,10 +19,10 @@ def _load_results(path: Path) -> list[dict]:
     return results
 
 
-def _model_summary(results: list[dict]) -> dict[str, dict[str, int]]:
+def _model_summary(results: list[dict[str, object]]) -> dict[str, dict[str, int]]:
     summary: dict[str, dict[str, int]] = {}
     for item in results:
-        model = item.get("model", "unknown")
+        model = str(item.get("model", "unknown"))
         if model not in summary:
             summary[model] = {
                 "correct": 0,
@@ -30,7 +30,8 @@ def _model_summary(results: list[dict]) -> dict[str, dict[str, int]]:
                 "runtime_error": 0,
                 "syntax_error": 0,
             }
-        level = item.get("level")
+        level_obj = item.get("level")
+        level = str(level_obj)
         if level in summary[model]:
             summary[model][level] += 1
     return summary
@@ -43,5 +44,5 @@ def _bar(value: int, total: int, width: int = 20) -> str:
     return "[green]" + ("#" * filled) + "[/]" + ("-" * (width - filled))
 
 
-def view_dataset(config: dict) -> None:
+def view_dataset(config: dict[str, object]) -> None:
     ui.console.print("Use view_textual.py for the Textual interface.")
