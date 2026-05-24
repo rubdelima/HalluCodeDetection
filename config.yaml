@@ -1,0 +1,32 @@
+dataset_build:
+  # % of the dataset to load for generate tests
+  dataset_load: 1.0
+
+  dataset_base:
+    - mbpp
+  
+  spinner_length: 600
+
+  model_config:
+    temperature: 1.0
+
+  models:
+    - gpt-oss:20b
+    - gemma3:4b
+    - qwen2.5-coder:7b
+    - deepseek-code:6.7b
+    - qwen3.5:9b
+    - gemma3:1b
+    - starcoder2:3b
+    - starcoder2:15b
+    - gemma4:e4b
+  
+  judge_model: gpt-oss:20b
+
+  tests_timeout: 30
+
+  checkpoint_interval: 5
+  
+  overwrite_results: false
+  
+  results_dir: data/results/
