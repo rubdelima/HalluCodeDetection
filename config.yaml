@@ -14,11 +14,11 @@ dataset_build:
     - gpt-oss:20b
     - gemma3:4b
     - qwen2.5-coder:7b
-    - deepseek-code:6.7b
+    # - deepseek-code:6.7b
     - qwen3.5:9b
     - gemma3:1b
-    - starcoder2:3b
-    - starcoder2:15b
+    # - starcoder2:3b
+    # - starcoder2:15b
     - gemma4:e4b
   
   judge_model: gpt-oss:20b
@@ -85,7 +85,8 @@ evaluation:
   
   gemma_models:
     - google/gemma-3-4b-it
-    - google/gemma-3-1b-it
+    - gemma-hallucination-qlora
+    - merged_model
   
   lora_models: []
   

@@ -22,7 +22,7 @@ class BaseModelHandler(ABC):
         self,
         example: SolveExample,
         options: dict[str, object] | None,
-        spinner_length: int,
+        spinner_length: int = 600,
     ) -> str:
         raise NotImplementedError
     
@@ -34,7 +34,7 @@ class BaseModelHandler(ABC):
         level: str,
         error: str,
         options: dict[str, object] | None,
-        spinner_length: int,
+        spinner_length: int = 600,
     ) -> str:
         raise NotImplementedError
     
@@ -44,7 +44,7 @@ class BaseModelHandler(ABC):
         example_prompt: str,
         code: str,
         options: dict[str, object] | None,
-        spinner_length: int,
+        spinner_length: int = 600,
     ) -> str:
         raise NotImplementedError
     

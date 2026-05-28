@@ -70,8 +70,16 @@ def _render_summary_table(rows: list[dict[str, object]]) -> Table:
     table.add_column("Total", style="blue")
     table.add_column("Accuracy", style="blue")
     for row in rows:
-        total = int(row.get("total", 0))
-        correct = int(row.get("correct", 0))
+        total = 0
+        total_raw = row.get("total")
+        if isinstance(total_raw, int):
+            total = total_raw
+
+        correct = 0
+        correct_raw = row.get("correct")
+        if isinstance(correct_raw, int):
+            correct = correct_raw
+
         accuracy = (correct / total) if total else 0.0
         table.add_row(
             str(row.get("provider", "-")),
@@ -140,6 +148,19 @@ def _append_jsonl(path: Path, items: list[dict[str, object]]) -> None:
             handle.write(json.dumps(item, ensure_ascii=True) + "\n")
 
 
+def _pending_sample_indices(
+    kind: str,
+    model: str,
+    dataset: list[dict[str, object]],
+    existing_results: dict[tuple[str, str, int], dict[str, object]],
+) -> list[int]:
+    pending_indices: list[int] = []
+    for sample_index, _sample in enumerate(dataset):
+        if (kind, model, sample_index) not in existing_results:
+            pending_indices.append(sample_index)
+    return pending_indices
+
+
 def evaluate_models(config: dict[str, object]) -> None:
     build_cfg = cast(dict[str, object], config.get("dataset_build", {}))
 
@@ -194,6 +215,18 @@ def evaluate_models(config: dict[str, object]) -> None:
 
     existing_results = _load_existing_results(output_path)
 
+    pending_tasks: list[tuple[str, str, list[int]]] = []
+    for kind, model in tasks:
+        pending_indices = _pending_sample_indices(kind, model, list(test_dataset), existing_results)
+        if pending_indices:
+            pending_tasks.append((kind, model, pending_indices))
+        else:
+            ui.console.print(f"Skipping {model} ({_task_group(kind)}): all samples already evaluated.")
+
+    if not pending_tasks:
+        ui.console.print("No pending evaluation records for any configured model.")
+        return
+
     model_counts: dict[str, dict[str, int]] = {}
     overall_counts = {
         "correct": 0,
@@ -206,7 +239,7 @@ def evaluate_models(config: dict[str, object]) -> None:
     current_model: str | None = None
     summary_rows: list[dict[str, object]] = []
 
-    total_samples = len(test_dataset) * len(tasks)
+    total_samples = sum(len(pending_indices) for _kind, _model, pending_indices in pending_tasks)
     progress = Progress(
         SpinnerColumn(),
         TextColumn("{task.fields[provider]}"),
@@ -235,7 +268,7 @@ def evaluate_models(config: dict[str, object]) -> None:
     )
 
     with progress:
-        for kind, model in tasks:
+        for kind, model, pending_indices in pending_tasks:
             if current_handler is not None and (current_kind != kind or current_model != model):
                 current_handler.close()
                 current_handler = None
@@ -258,32 +291,9 @@ def evaluate_models(config: dict[str, object]) -> None:
             correct = 0
             total = 0
             pending_write: list[dict[str, object]] = []
-            for sample_index, sample in enumerate(test_dataset):
+            for sample_index in pending_indices:
+                sample = test_dataset[sample_index]
                 sample_label = f"#{sample_index + 1}/{len(test_dataset)}"
-                record_key = (kind, model, sample_index)
-                if record_key in existing_results:
-                    previous = existing_results[record_key]
-                    predicted_level = _normalize_level(previous.get("predicted_level"))
-                    expected_level = _normalize_level(previous.get("expected_level") or sample["level"])
-                    if predicted_level in model_counts[model]:
-                        model_counts[model][predicted_level] += 1
-                        overall_counts[predicted_level] += 1
-                    total += 1
-                    if predicted_level == expected_level:
-                        correct += 1
-                    progress.update(
-                        task_id,
-                        advance=1,
-                        provider=_task_group(kind),
-                        model=model,
-                        sample=sample_label,
-                        c=overall_counts["correct"],
-                        f=overall_counts["functional_error"],
-                        r=overall_counts["runtime_error"],
-                        s=overall_counts["syntax_error"],
-                    )
-                    continue
-
                 expected_level = _normalize_level(sample["level"])
                 try:
                     response = current_handler.analyze_hallucination(

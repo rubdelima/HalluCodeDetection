@@ -25,6 +25,8 @@ dependencies = [
     "protobuf>=7.35.0",
     "sentencepiece>=0.2.1",
     "tensorboard>=2.20.0",
+    "seaborn>=0.13.2",
+    "matplotlib>=3.10.9",
 ]
 
 [tool.mypy]
