@@ -28,15 +28,13 @@ def make_autopct(values: list[int]):
     return autopct
 
 
-def plot_model(model: str, counts: dict[str, int], out_dir: Path) -> None:
+def _draw_pie(ax: plt.Axes, model: str, counts: dict[str, int]) -> None:
     total = sum(counts.values())
 
     sizes = [counts.get(lv, 0) for lv in LEVEL_ORDER]
     colors = [COLORS[lv] for lv in LEVEL_ORDER]
     present = [(s, c) for s, c, _ in zip(sizes, colors, LEVEL_ORDER) if s > 0]
     p_sizes, p_colors = zip(*present)
-
-    fig, ax = plt.subplots(figsize=(5, 5))
 
     ax.pie(
         p_sizes,
@@ -54,6 +52,11 @@ def plot_model(model: str, counts: dict[str, int], out_dir: Path) -> None:
         fontweight="bold",
         pad=10,
     )
+
+
+def plot_model(model: str, counts: dict[str, int], out_dir: Path) -> None:
+    fig, ax = plt.subplots(figsize=(5, 5))
+    _draw_pie(ax, model, counts)
 
     legend_handles = [
         mpatches.Patch(color=COLORS[lv], label=LEVEL_LABELS[lv])
@@ -79,11 +82,47 @@ def plot_model(model: str, counts: dict[str, int], out_dir: Path) -> None:
     print(f"Salvo: {out_path}")
 
 
+def plot_grid(dist: dict[str, dict[str, int]], out_dir: Path) -> None:
+    models = sorted(dist.keys())
+    fig, axes = plt.subplots(3, 2, figsize=(10, 15))
+
+    for ax, model in zip(axes.flatten(), models):
+        _draw_pie(ax, model, dist[model])
+
+    legend_handles = [
+        mpatches.Patch(color=COLORS[lv], label=LEVEL_LABELS[lv])
+        for lv in LEVEL_ORDER
+    ]
+    fig.legend(
+        handles=legend_handles,
+        loc="lower center",
+        ncol=4,
+        fontsize=11,
+        frameon=False,
+        bbox_to_anchor=(0.5, 0.01),
+    )
+    fig.suptitle(
+        "Distribuição de Classificação por Modelo",
+        fontsize=15,
+        fontweight="bold",
+        y=1.01,
+    )
+
+    plt.tight_layout(rect=[0, 0.06, 1, 1])
+
+    out_path = out_dir / "classification_grid.png"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Salvo: {out_path}")
+
+
 def main() -> None:
     records = load_jsonl(DATA_PATH)
     dist = build_distribution(records)
     for model, counts in sorted(dist.items()):
         plot_model(model, counts, OUT_DIR)
+    plot_grid(dist, OUT_DIR)
 
 
 if __name__ == "__main__":
