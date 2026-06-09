@@ -1,5 +1,48 @@
-dataset_build:
-  # % of the dataset to load for generate tests
+ui:
+  show_progress_bar: true
+  spinner_length: 600
+
+models:
+  ollama:
+    - id: gpt-oss:20b
+      name: GPT-OSS 20B 
+      size: 20
+
+
+    - id: gemma3:4b
+      name: Gemma 3 4B (QNT)
+      size: 4
+    
+    - id: qwen2.5-coder:7b
+      name: Qwen 2.5 Coder 7B (QNT)
+      size: 7
+    
+    - id: qwen3.5:9b
+      name: Qwen 3.5 9B (QNT)
+      size: 9
+    
+    - id: gemma3:1b
+      name: Gemma 3 1B (QNT)
+      size: 1
+    
+    - id: gemma4:e4b
+      name: Gemma 4 E4B (QNT)
+      size: 8
+  
+  gemma:
+    - id: google/gemma-3-4b-it
+      name: Gemma 3 4B IT (FP16)
+      size: 4
+    
+    - id: gemma-hallucination-qlora
+      name: Gemma Hallucination QLoRA
+      size: 4
+    
+    - id: merged_model
+      name: Merged Model (QLoRA)
+      size: 4
+  
+dataset_building:
   dataset_load: 1.0
 
   dataset_base:
@@ -7,8 +50,7 @@ dataset_build:
   
   spinner_length: 600
 
-  model_config:
-    temperature: 1.0
+  model_temperature: 1.0
 
   models:
     - gpt-oss:20b
@@ -29,25 +71,27 @@ dataset_build:
   
   overwrite_results: false
   
-  results_dir: data/results/
+  results_dir: ./data/results/
 
-# dataset_load: fraction of the judged dataset to use (0-1).
-# recomendado: 0.3-1.0 para testes rapidos vs. treino completo.
-dataset_load: 1.0
-# correct_size: fraction of "correct" samples to keep (0-1).
-# recomendado: 0.2-0.6 para reduzir desbalanceamento.
-correct_size: 0.5
-# random_seed: seed for shuffling and split reproducibility.
-random_seed: 42
-# test_size: fraction reserved for evaluation split (0-1).
-# recomendado: 0.1-0.2.
-validation_size: 0.1
-test_size: 0.2
+dataset:
+  # dataset_load: fraction of the judged dataset to use (0-1).
+  # recomendado: 0.3-1.0 para testes rapidos vs. treino completo.
+  dataset_load: 1.0
+  # correct_size: fraction of "correct" samples to keep (0-1).
+  # recomendado: 0.2-0.6 para reduzir desbalanceamento.
+  correct_size: 0.5
+  # random_seed: seed for shuffling and split reproducibility.
+  random_seed: 42
+  # test_size: fraction reserved for evaluation split (0-1).
+  # recomendado: 0.1-0.2.
+  validation_size: 0.1
+  test_size: 0.2
 
 training:
   # model: Hugging Face model id used for SFT.
   # recomendado: google/gemma-3-4b-it ou google/gemma-3-1b-it.
-  model: google/gemma-3-4b-it
+  models: 
+    - google/gemma-3-4b-it
 
   # use_qlora: list of booleans for grid search.
   # true = 4-bit QLoRA, false = LoRA full precision.
@@ -70,23 +114,18 @@ training:
   model_output_dir: data/trained_models/
 
   # max_salved_models: maximum number of saved models kept on disk.
-  # recomendado: 3-10.
   max_salved_models: 5
 
 evaluation:
   checkpoint_interval: 10
-
-  ollama_models:
+  model_temperature: 0.0
+  overwrite : false
+  models:
     - gpt-oss:20b
     - gemma3:4b
     - gemma3:1b
     - gemma4:e4b
     - qwen2.5-coder:7b
-  
-  gemma_models:
     - google/gemma-3-4b-it
     - gemma-hallucination-qlora
     - merged_model
-  
-  lora_models: []
-  

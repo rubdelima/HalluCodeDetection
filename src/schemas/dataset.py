@@ -1,9 +1,6 @@
-from __future__ import annotations
+from pydantic import BaseModel
 
-from typing import TypedDict
-
-
-class BaseResultRow(TypedDict):
+class BaseResultRow(BaseModel):
     benchmark: str
     benchmark_id: int
     model: str
@@ -11,8 +8,7 @@ class BaseResultRow(TypedDict):
     code: str
     error: str
 
-
-class JudgeResultRow(TypedDict):
+class JudgeResultRow(BaseModel):
     benchmark: str
     benchmark_id: int
     response_model: str

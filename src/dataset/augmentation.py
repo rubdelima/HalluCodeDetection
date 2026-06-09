@@ -5,37 +5,16 @@ from pathlib import Path
 from typing import Iterable, cast
 
 from src.core import ui
+
+from src.constants.dataset import DatasetBuildingConfig
+
 from src.dataset.load import load_mbpp_split
-from src.dataset.types import BaseResultRow, JudgeResultRow
-from src.models.ollama_handler import OllamaHandler
-from rich.progress import (
-    BarColumn,
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    TimeElapsedColumn,
-    TimeRemainingColumn,
-)
+from src.dataset.utils import load_jsonl, append_jsonl, get_pending_tasks
+from src.dataset.ui import get_augmentation_progress
 
+from src.models import get_model_handler
 
-def _load_jsonl(path: Path) -> list[BaseResultRow]:
-    if not path.exists():
-        return []
-    items: list[BaseResultRow] = []
-    with path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            line = line.strip()
-            if not line:
-                continue
-            items.append(cast(BaseResultRow, json.loads(line)))
-    return items
-
-
-def _append_jsonl(path: Path, items: Iterable[JudgeResultRow]) -> None:
-    with path.open("a", encoding="utf-8") as handle:
-        for item in items:
-            handle.write(json.dumps(item, ensure_ascii=True) + "\n")
-
+from src.schemas.dataset import BaseResultRow, JudgeResultRow
 
 def _parse_judge_response(content: str) -> dict[str, str]:
     try:
@@ -47,152 +26,71 @@ def _parse_judge_response(content: str) -> dict[str, str]:
     return {"explanation": content.strip()}
 
 
-def dataset_judge(config: dict[str, object], model_name: str | None = None) -> None:
-    build_cfg = cast(dict[str, object], config.get("dataset_build", {}))
-    results_dir = Path(str(build_cfg.get("results_dir", "data/results/")))
+def dataset_judge(config : DatasetBuildingConfig) -> None:
+    if config.judge_model is None:
+        ui.console.print("No judge model specified in the configuration. Please specify a judge model to run the dataset judge step.")
+        raise ValueError("No judge model specified in the configuration.")
+    
+    results_dir = Path(config.results_dir)
     results_dir.mkdir(parents=True, exist_ok=True)
 
     base_path = results_dir / "dataset_base.json"
     judge_path = results_dir / "dataset_judge.jsonl"
 
-    judge_model_value = model_name or build_cfg.get("judge_model")
-    if not isinstance(judge_model_value, str) or not judge_model_value:
-        raise ValueError("No judge model configured.")
-    judge_model = judge_model_value
-
-    base_results = _load_jsonl(base_path)
+    if not base_path.exists():
+        ui.console.print(f"Base results file not found in {results_dir}. Please run the dataset building step first.")
+        return
+    
+    base_results = load_jsonl(str(base_path), BaseResultRow)
+    
     if not base_results:
         ui.console.print("No base results found to judge.")
         return
 
-    existing: list[JudgeResultRow] = []
-    if judge_path.exists():
-        with judge_path.open("r", encoding="utf-8") as handle:
-            for line in handle:
-                line = line.strip()
-                if not line:
-                    continue
-                existing.append(cast(JudgeResultRow, json.loads(line)))
-
-    def to_int(value: object | None) -> int | None:
-        if value is None:
-            return None
-        if isinstance(value, int):
-            return value
-        if isinstance(value, str):
-            try:
-                return int(value)
-            except ValueError:
-                return None
-        return None
-
-    existing_keys: set[tuple[str, int, str, str]] = set()
-    for existing_item in existing:
-        bench_id = to_int(existing_item.get("benchmark_id"))
-        if bench_id is None:
-            continue
-        existing_keys.add(
-            (
-                existing_item["benchmark"],
-                bench_id,
-                existing_item["response_model"],
-                existing_item["judge_model"],
-            )
-        )
-
+    existing = load_jsonl(str(judge_path), JudgeResultRow)
     mbpp_train = load_mbpp_split("train")
-    mbpp_by_id = {ex.benchmak_id: ex for ex in mbpp_train}
-
-    pending: list[tuple[BaseResultRow, int]] = []
-    for base_item in base_results:
-        bench_id = to_int(base_item.get("benchmark_id"))
-        if bench_id is None:
-            continue
-        if bench_id not in mbpp_by_id:
-            continue
-        key = (
-            base_item["benchmark"],
-            bench_id,
-            base_item["model"],
-            judge_model,
-        )
-        if key not in existing_keys:
-            pending.append((base_item, bench_id))
+    mbpp_by_id = {ex.benchmark_id: ex for ex in mbpp_train}
+    
+    pending: list[tuple[BaseResultRow, int]] = get_pending_tasks(mbpp_by_id, existing, base_results, config.judge_model.id)
 
     if not pending:
         ui.console.print("All items already judged.")
         return
 
-    model_options = build_cfg.get("model_config")
-    if not isinstance(model_options, dict):
-        model_options = {}
-    checkpoint_interval_value = build_cfg.get("checkpoint_interval", 10)
-    checkpoint_interval = checkpoint_interval_value if isinstance(checkpoint_interval_value, int) else 10
+    handler = get_model_handler(config.judge_model)
 
-    handler = OllamaHandler(judge_model)
+    try:
+        pending_write: list[dict[str, object]] = []
+        with get_augmentation_progress(ui.console) as progress:
+            task_id = progress.add_task("judge",total=len(pending),model=config.judge_model.id,bench="-",bench_id="-")
+            for index, (pending_item, bench_id) in enumerate(pending, start=1):
+                example = mbpp_by_id[bench_id]
+                try:
+                    judge_result = handler.analyze_hallucination(example.prompt,pending_item,config.model_temperature)
+                    pending_write.append(judge_result.model_dump())
+                
+                except Exception as exc:  # noqa: BLE001
+                    ui.console.print(f"Error judging item {bench_id}: {exc}")
 
-    progress = Progress(
-        SpinnerColumn(),
-        TextColumn("{task.fields[model]}"),
-        TextColumn("{task.fields[bench]}"),
-        TextColumn("{task.fields[bench_id]}"),
-        BarColumn(),
-        TextColumn("{task.completed}/{task.total}"),
-        TimeElapsedColumn(),
-        TimeRemainingColumn(),
-        console=ui.console,
-    )
-    task_id = progress.add_task(
-        "judge",
-        total=len(pending),
-        model=judge_model,
-        bench="-",
-        bench_id="-",
-    )
+                if (index % config.checkpoint_interval == 0) and pending_write:
+                    append_jsonl(judge_path, pending_write)
+                    pending_write = []
 
-    pending_write: list[JudgeResultRow] = []
-    with progress:
-        for index, (pending_item, bench_id) in enumerate(pending, start=1):
-            example = mbpp_by_id[bench_id]
-
-            try:
-                content = handler.generate_judge(
-                    example.prompt,
-                    str(pending_item["code"]),
-                    str(pending_item["level"]),
-                    str(pending_item["error"]),
-                    model_options,
-                    spinner_length=400,
+                progress.update(
+                    task_id,
+                    advance=1,
+                    model=config.judge_model.id,
+                    bench=pending_item.benchmark,
+                    bench_id=str(bench_id),
                 )
-                parsed = _parse_judge_response(content)
-                explanation = parsed.get("explanation", "")
-            except Exception as exc:  # noqa: BLE001
-                explanation = f"Model error: {exc}"
 
-            pending_write.append(
-                {
-                    "benchmark": pending_item["benchmark"],
-                    "benchmark_id": bench_id,
-                    "response_model": pending_item["model"],
-                    "judge_model": judge_model,
-                    "explanation": explanation,
-                }
-            )
+        if pending_write:
+            append_jsonl(judge_path, pending_write)
 
-            if index % checkpoint_interval == 0:
-                _append_jsonl(judge_path, pending_write)
-                pending_write = []
-
-            progress.update(
-                task_id,
-                advance=1,
-                model=judge_model,
-                bench=pending_item["benchmark"],
-                bench_id=str(bench_id),
-            )
-
-    if pending_write:
-        _append_jsonl(judge_path, pending_write)
-
-    handler.close()
+    except Exception as exc:
+        ui.console.print(f"Error occurred while judging dataset: {exc}")
+    
+    finally:
+        handler.close()
+        
     ui.console.print("Dataset judge finished.")

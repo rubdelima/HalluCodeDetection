@@ -27,6 +27,7 @@ dependencies = [
     "tensorboard>=2.20.0",
     "seaborn>=0.13.2",
     "matplotlib>=3.10.9",
+    "prompt-toolkit>=3.0.52",
 ]
 
 [tool.mypy]
@@ -39,4 +40,5 @@ disallow_any_generics = true
 [dependency-groups]
 dev = [
     "mypy>=2.1.0",
+    "types-pyyaml>=6.0.12.20260518",
 ]

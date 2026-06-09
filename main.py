@@ -1,96 +1,61 @@
 from __future__ import annotations
 
-from pathlib import Path
-
-import yaml
-
-from src.core import ui
-
-
-def interactive_menu() -> str:
-    options = {
-        "1": "build_dataset",
-        "2": "dataset_judge",
-        "3": "train_model",
-        "4": "evaluate",
-        "5": "view_dataset",
-        "q": "quit",
-    }
-    ui.console.print("Select an option:")
-    
-    for key, value in options.items():
-        ui.console.print(f"  {key}) {value}")
-    
-    choice = ui.console.input("Choice: ").strip().lower()
-    
-    return options.get(choice, "")
-
-
-def load_config(config_path: Path) -> dict[str, object]:
-    if not config_path.exists():
-        raise FileNotFoundError(f"Config not found: {config_path}")
-    with config_path.open("r", encoding="utf-8") as handle:
-        return yaml.safe_load(handle) or {}
-
-
 def main(args) -> None:
-    config = load_config(Path(args.config))
+    from src.core import ui
+    from src.constants import HalluCodeDetectionConfig
+    
+    config = HalluCodeDetectionConfig(args.config)
 
     if args.build_dataset:
         from src.dataset.build import build_dataset
-
-        build_dataset(config)
+        build_dataset(config.dataset_building_config)
 
     if args.dataset_judge:
         from src.dataset.augmentation import dataset_judge
-
-        dataset_judge(config, model_name=args.model_name)
+        dataset_judge(config.dataset_building_config)
 
     if args.train_model:
         with ui.console.status("Loading training dependencies..."):
-            from src.training import train_model
-
-        train_model(config, model_name=args.model_name)
+            from src.training import train_models
+        train_models(config)
 
     if args.evaluate:
         with ui.console.status("Loading evaluation dependencies..."):
             from src.evaluations import evaluate_models
-
         evaluate_models(config)
-
-    if args.view_dataset:
-        from src.dataset.view_textual import view_dataset
-
-        view_dataset(config)
         return
         
-    if any([args.build_dataset, args.dataset_judge, args.train_model, args.evaluate, args.view_dataset]):
+    if any([args.build_dataset, args.dataset_judge, args.train_model, args.evaluate]):
         return
 
-    selection = interactive_menu()
+    selection = ui.interactive_menu(
+        {
+            "1": "build_dataset",
+            "2": "dataset_judge",
+            "3": "train_model",
+            "4": "evaluate",
+            "q": "quit",
+        }
+    )
     
     if selection == "build_dataset":
         from src.dataset.build import build_dataset
-
-        build_dataset(config)
+        build_dataset(config.dataset_building_config)
+    
     elif selection == "dataset_judge":
         from src.dataset.augmentation import dataset_judge
-
-        dataset_judge(config, model_name=None)
+        dataset_judge(config.dataset_building_config)
+        
     elif selection == "train_model":
         with ui.console.status("Loading training dependencies..."):
-            from src.training import train_model
-
-        train_model(config, model_name=None)
+            from src.training import train_models
+        train_models(config)
+    
     elif selection == "evaluate":
         with ui.console.status("Loading evaluation dependencies..."):
             from src.evaluations import evaluate_models
-
         evaluate_models(config)
-    elif selection == "view_dataset":
-        from src.dataset.view_textual import view_dataset
-
-        view_dataset(config)
+        
     else:
         ui.console.print("Bye.")
 
@@ -105,5 +70,4 @@ if __name__ == "__main__":
     parser.add_argument("--model_name", type=str, default=None)
     parser.add_argument("--train_model", action="store_true")
     parser.add_argument("--evaluate", action="store_true")
-    parser.add_argument("--view_dataset", action="store_true")
     main(parser.parse_args())

@@ -11,6 +11,7 @@ from src.dataset.load import MBPPExample, load_mbpp_split, sample_examples
 from src.dataset.types import BaseResultRow
 from src.evaluations.tests import run_tests
 from src.models.ollama_handler import OllamaHandler
+from src.constants.dataset import DatasetBuildingConfig
 
 
 @dataclass(frozen=True)
@@ -57,7 +58,7 @@ def build_task_keys(
     pending: list[TaskKey] = []
     for model in models:
         for example in examples:
-            key = TaskKey(example.benchmark_name, example.benchmak_id, model)
+            key = TaskKey(example.benchmark_name, example.benchmark_id, model)
             if key not in existing:
                 pending.append(key)
     return pending
@@ -94,7 +95,8 @@ def count_levels_by_model(results: Iterable[BaseResultRow]) -> dict[str, dict[st
     return model_counts
 
 
-def build_dataset(config: dict[str, object]) -> None:
+def build_dataset(config: DatasetBuildingConfig) -> None:
+    
     build_cfg = cast(dict[str, object], config.get("dataset_build", {}))
 
     def to_float(value: object, default: float) -> float:
@@ -153,7 +155,7 @@ def build_dataset(config: dict[str, object]) -> None:
 
     mbpp_train = load_mbpp_split("train")
     mbpp_subset = sample_examples(mbpp_train, dataset_fraction, seed=42)
-    examples_by_id = {ex.benchmak_id: ex for ex in mbpp_subset}
+    examples_by_id = {ex.benchmark_id: ex for ex in mbpp_subset}
 
     pending_keys = build_task_keys(models, mbpp_subset, existing_keys)
     total_count = len(pending_keys)
