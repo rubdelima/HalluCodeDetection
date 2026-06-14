@@ -88,6 +88,14 @@ dataset:
   test_size: 0.2
 
 training:
+  # search_strategy: grid | random | bayesian.
+  # bayesian usa os resultados em results_dir/trained_models.jsonl para escolher proximos candidatos.
+  search_strategy: bayesian
+  random_seed: 42
+  bayesian_random_starts: 5
+  bayesian_good_quantile: 0.35
+  bayesian_candidates: 128
+
   # model: Hugging Face model id used for SFT.
   # recomendado: google/gemma-3-4b-it ou google/gemma-3-1b-it.
   models: 
@@ -99,16 +107,19 @@ training:
 
   # lora_r: list of rank values for LoRA adapters.
   # recomendado: [8, 16, 32].
-  lora_r: [16]
+  lora_r: [8, 16, 32]
   # lora_alpha: list of alpha values (scales LoRA updates).
   # recomendado: [8, 16, 32].
-  lora_alpha: [16]
+  lora_alpha: [8, 16, 32]
   # lora_dropout: list of dropout values.
   # recomendado: [0.0, 0.05, 0.1].
-  lora_dropout: [0.05]
+  lora_dropout: [0.05, 0.1]
   # learning_rate: list of learning rates for grid search.
   # recomendado: [5e-5, 2e-5, 1e-4].
-  learning_rate: [5e-5]
+  learning_rate: [5e-5, 1e-4]
+  bias : ["none", "all", "lora_only"]
+  num_epochs : [3,4,5]
+  
 
   # model_output_dir: root folder to store each trained run.
   model_output_dir: data/trained_models/

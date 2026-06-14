@@ -22,3 +22,7 @@ a.py
 
 data/trained_models/
 generated_models/
+
+.agents
+.codex
+data/results/training_runs/

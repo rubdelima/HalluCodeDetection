@@ -3,6 +3,7 @@ from src.constants.training import TrainingHyperparameters
 from peft import LoraConfig
 from trl.trainer.sft_config import SFTConfig
 from src.dataset.utils import to_conversation
+import torch
 
 def get_trainer(
         hyperparameters: TrainingHyperparameters, 
@@ -49,8 +50,8 @@ def get_trainer(
     return SFTTrainer(
         model=model, #type:ignore
         args=args,
-        train_dataset=dataset["train"],
-        eval_dataset=dataset["validation"],
+        train_dataset=conversation_dataset["train"],
+        eval_dataset=conversation_dataset["validation"],
         peft_config=peft_config,
         processing_class=processor,#type:ignore
     )

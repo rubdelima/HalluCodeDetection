@@ -1,10 +1,11 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Literal, Tuple
+from typing import Optional, List, Dict, Literal
 
 from src.constants.models import ModelInfo, get_models_options
 from itertools import product
 
 BIAS_OPTIONS = Literal["none", "all", "lora_only"]
+SEARCH_STRATEGY = Literal["grid", "random", "bayesian"]
 
 class TrainingHyperparameters(BaseModel):
     model_name: ModelInfo = Field(..., description="Model configuration to use for training.")
@@ -21,10 +22,15 @@ class TrainingConfig(BaseModel):
     hyperparameters : List[TrainingHyperparameters] = Field(..., description="List of training hyperparameter configurations to use for training")
     models_path : str = Field("models", description="Path to save trained models.")
     max_saved_models : int = Field(5, description="Maximum number of trained models to save.")
+    search_strategy: SEARCH_STRATEGY = Field("grid", description="Hyperparameter search strategy: grid, random, or bayesian.")
+    random_seed: int = Field(42, description="Seed used by random and bayesian search.")
+    bayesian_random_starts: int = Field(5, description="Number of random observations before bayesian sampling starts.")
+    bayesian_good_quantile: float = Field(0.35, description="Fraction of best observations used by the bayesian sampler.")
+    bayesian_candidates: int = Field(128, description="Number of candidate configurations scored at each bayesian selection step.")
     
     @classmethod
     def from_config(cls, config, models_options: Optional[Dict[str, ModelInfo]] = None) -> "TrainingConfig":
-        models_options = get_models_options(config) if models_options is not None else {}
+        models_options = get_models_options(config) if models_options is None else models_options
         models_id = config.get("training", {}).get("models", [])
         models = [model for model_id, model in models_options.items() if model_id in models_id]
         use_qlora_options = config.get("training", {}).get("use_qlora", [True])
@@ -55,8 +61,19 @@ class TrainingConfig(BaseModel):
         
         return cls(
             hyperparameters=hyperparameters,
-            models_path=config.get("training", {}).get("models_path", "models"),
-            max_saved_models=config.get("training", {}).get("max_saved_models", 5),
+            models_path=config.get("training", {}).get(
+                "models_path",
+                config.get("training", {}).get("model_output_dir", "models"),
+            ),
+            max_saved_models=config.get("training", {}).get(
+                "max_saved_models",
+                config.get("training", {}).get("max_salved_models", 5),
+            ),
+            search_strategy=config.get("training", {}).get("search_strategy", "grid"),
+            random_seed=config.get("training", {}).get("random_seed", 42),
+            bayesian_random_starts=config.get("training", {}).get("bayesian_random_starts", 5),
+            bayesian_good_quantile=config.get("training", {}).get("bayesian_good_quantile", 0.35),
+            bayesian_candidates=config.get("training", {}).get("bayesian_candidates", 128),
         )
 
 class TrainingResult(TrainingHyperparameters):

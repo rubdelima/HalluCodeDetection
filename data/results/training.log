@@ -1,0 +1,29 @@
+{"timestamp": "2026-06-09T22:24:02", "event": "train_models.start", "configured": 1, "executed": 0, "pending": 1, "json_only": 0}
+{"timestamp": "2026-06-09T22:24:11", "event": "train_model.start", "model_id": "google/gemma-3-4b-it", "run_path": "data/results/training_runs/f689fca3", "merged_model_path": "data/trained_models/f689fca3", "dtype": "torch.bfloat16"}
+{"timestamp": "2026-06-09T22:24:11", "event": "train.load_model.start"}
+{"timestamp": "2026-06-09T22:25:24", "event": "train.load_model.done"}
+{"timestamp": "2026-06-09T22:25:24", "event": "train.load_processor.start"}
+{"timestamp": "2026-06-09T22:25:32", "event": "train.load_processor.done"}
+{"timestamp": "2026-06-09T22:25:32", "event": "train.build_trainer.start"}
+{"timestamp": "2026-06-09T22:25:51", "event": "train.build_trainer.done"}
+{"timestamp": "2026-06-09T22:25:51", "event": "train.trainer_train.start"}
+{"timestamp": "2026-06-09T22:53:36", "event": "train.trainer_train.done"}
+{"timestamp": "2026-06-09T22:53:36", "event": "train.save_adapter.start"}
+{"timestamp": "2026-06-09T22:53:57", "event": "train.save_adapter.done"}
+{"timestamp": "2026-06-09T22:53:58", "event": "merge.load_base_model.start", "base_model_id": "google/gemma-3-4b-it", "adapter_path": "data/results/training_runs/f689fca3", "merged_model_path": "data/trained_models/f689fca3", "dtype": "torch.bfloat16"}
+{"timestamp": "2026-06-09T22:54:23", "event": "merge.load_adapter.start"}
+{"timestamp": "2026-06-09T22:54:45", "event": "merge.merge_and_unload.start"}
+{"timestamp": "2026-06-09T22:55:14", "event": "merge.save_model.start"}
+{"timestamp": "2026-06-09T22:55:57", "event": "merge.save_model.done"}
+{"timestamp": "2026-06-09T22:55:57", "event": "merge.save_processor.start"}
+{"timestamp": "2026-06-09T22:56:00", "event": "merge.save_processor.done"}
+{"timestamp": "2026-06-09T22:56:01", "event": "evaluation.train.start"}
+{"timestamp": "2026-06-09T23:20:30", "event": "train_models.start", "configured": 324, "executed": 0, "pending": 324, "json_only": 0}
+{"timestamp": "2026-06-09T23:20:36", "event": "train_model.start", "model_id": "google/gemma-3-4b-it", "run_path": "data/results/training_runs/a2b0d5bc", "merged_model_path": "data/trained_models/a2b0d5bc", "dtype": "torch.bfloat16"}
+{"timestamp": "2026-06-09T23:20:36", "event": "train.load_model.start"}
+{"timestamp": "2026-06-09T23:21:47", "event": "train.load_model.done"}
+{"timestamp": "2026-06-09T23:21:47", "event": "train.load_processor.start"}
+{"timestamp": "2026-06-09T23:21:55", "event": "train.load_processor.done"}
+{"timestamp": "2026-06-09T23:21:55", "event": "train.build_trainer.start"}
+{"timestamp": "2026-06-09T23:22:18", "event": "train.build_trainer.done"}
+{"timestamp": "2026-06-09T23:22:18", "event": "train.trainer_train.start"}

@@ -23,5 +23,5 @@ class EvaluationResume(BaseModel):
     parsed_responses : int = Field(0, description="The number of responses that were successfully parsed and included in the evaluation.")
     total_responses : int = Field(0, description="The total number of responses that were evaluated, including those that could not be parsed.")
     overall_accuracy : float = Field(0.0, description="The overall accuracy of the model across all evaluated samples, calculated as the number of correct predictions divided by the total number of parsed responses.")
-    corrects_by_level : Dict[LEVEL_TYPE, int] = Field(BASE_LEVEL_DICT, description="A breakdown of accuracy by error level, showing the accuracy for each specific level of error.")
-    evaluations : list[EvaluationSummaryRow] = Field([], description="A list of individual evaluation results for each sample, providing detailed information about the model's performance on each case.")
+    corrects_by_level : Dict[LEVEL_TYPE, int] = Field(default_factory=lambda: BASE_LEVEL_DICT.copy(), description="A breakdown of accuracy by error level, showing the accuracy for each specific level of error.")
+    evaluations : list[EvaluationSummaryRow] = Field(default_factory=list, description="A list of individual evaluation results for each sample, providing detailed information about the model's performance on each case.")

@@ -3,9 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 from datasets import Dataset
 from src.core import ui
-from src.models import get_model_handler
 
-#from src.training.ui import render_summary_table, get_progress_evaluation
+from src.evaluations.ui import (
+    add_evaluation_task,
+    get_progress_evaluation,
+    render_summary_table,
+    update_evaluation_task,
+)
 from src.constants import HalluCodeDetectionConfig
 from src.constants.models import ModelInfo
 from src.dataset.utils import load_jsonl, append_jsonl
@@ -14,8 +18,6 @@ from src.models import get_model_handler
 from typing import Optional, List, Tuple
 
 from src.dataset.judge_dataset import Record, load_hallucination_dataset
-
-from tqdm.auto import tqdm
 
 def filter_records(
     model_info: ModelInfo,
@@ -78,40 +80,69 @@ def evaluate_model(
     
     to_update = []
     try:
-        for idx, sample in tqdm(enumerate(filtred), total=len(filtred), desc="Evaluating"):
-            judge_response = model_handler.generate_judge(
-                example_prompt = sample.problem_description,
-                code = sample.generated_code,
-                temperature = model_temperature
-            )
-            evaluation_resume.total_responses += 1
-            
-            predicted_level = judge_response.analysis.level if judge_response.analysis else None
+        progress = get_progress_evaluation()
+        task_id = add_evaluation_task(
+            progress,
+            total=len(filtred),
+            provider=model_info.type,
+            model=model_info.id,
+            resume=evaluation_resume,
+        )
+
+        with progress:
+            for idx, sample in enumerate(filtred):
+                update_evaluation_task(
+                    progress,
+                    task_id,
+                    evaluation_resume,
+                    sample=f"sample {idx + 1}",
+                )
+                judge_response = model_handler.generate_judge(
+                    example_prompt = sample.problem_description,
+                    code = sample.generated_code,
+                    temperature = model_temperature
+                )
+                evaluation_resume.total_responses += 1
                 
-            if predicted_level is not None:
-                evaluation_resume.parsed_responses += 1
-                evaluation_resume.corrects_by_level[predicted_level] += 1 if predicted_level == sample.level else 0
-            
-            
-            evaluation = EvaluationSummaryRow(
-                model_id=model_info.id,
-                kind=model_info.type,
-                sample_index=idx,
-                expected_level = sample.level, #type: ignore
-                correct = sample.level == predicted_level if predicted_level is not None else False,
-                predicted_level = predicted_level,
-                judge_response = judge_response,
-            )
-            
-            evaluation_resume.evaluations.append(evaluation)
-            
-            if checkpoint and idx % checkpoint == 0:
-                to_update.append(evaluation.model_dump())
-                if file_save and to_update:
-                    append_jsonl(file_save, to_update)
-                    to_update = []
+                predicted_level = judge_response.analysis.level if judge_response.analysis else None
+                    
+                if predicted_level is not None:
+                    evaluation_resume.parsed_responses += 1
+                    evaluation_resume.corrects_by_level[predicted_level] += 1 if predicted_level == sample.level else 0
+                
+                evaluation_resume.overall_accuracy = (
+                    sum(evaluation_resume.corrects_by_level.values()) / evaluation_resume.total_responses
+                    if evaluation_resume.total_responses > 0 else 0.0
+                )
+                
+                evaluation = EvaluationSummaryRow(
+                    model_id=model_info.id,
+                    kind=model_info.type,
+                    sample_index=idx,
+                    expected_level = sample.level, #type: ignore
+                    correct = sample.level == predicted_level if predicted_level is not None else False,
+                    predicted_level = predicted_level,
+                    judge_response = judge_response,
+                )
+                
+                evaluation_resume.evaluations.append(evaluation)
+                update_evaluation_task(
+                    progress,
+                    task_id,
+                    evaluation_resume,
+                    sample=f"sample {idx + 1}",
+                    advance=1,
+                )
+                
+                if checkpoint and idx % checkpoint == 0:
+                    to_update.append(evaluation.model_dump())
+                    if file_save and to_update:
+                        append_jsonl(file_save, to_update)
+                        to_update = []
 
     finally:
+        if file_save and to_update:
+            append_jsonl(file_save, to_update)
         model_handler.close()
     
     evaluation_resume.overall_accuracy = sum(evaluation_resume.corrects_by_level.values()) / evaluation_resume.total_responses if evaluation_resume.total_responses > 0 else 0.0
@@ -134,10 +165,12 @@ def evaluate_models(config: HalluCodeDetectionConfig) -> None:
     }
     
     SPLIT_SIZE = len(test_dataset)
+    summary_rows: list[dict[str, object]] = []
     
     for model_info in config.evaluation_config.models:
         
         if len([item for item in summary if item.model_id == model_info.id]) == SPLIT_SIZE:
+            ui.console.print(f"[yellow]Skipping {model_info.id}: evaluation already complete.[/]")
             continue
         
         evaluation_result = evaluate_model(
@@ -148,5 +181,16 @@ def evaluate_models(config: HalluCodeDetectionConfig) -> None:
             file_save=output_path,
             summary_dict=summary_dict
         )
+        summary_rows.append(
+            {
+                "provider": model_info.type,
+                "model": model_info.id,
+                "parsed": evaluation_result.parsed_responses,
+                "total": evaluation_result.total_responses,
+                **evaluation_result.corrects_by_level,
+                "accuracy": f"{evaluation_result.overall_accuracy * 100:.2f}%",
+            }
+        )
         
-        
+    if summary_rows:
+        ui.console.print(render_summary_table(summary_rows))
