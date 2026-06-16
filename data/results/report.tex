@@ -1,0 +1,400 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{url}
+\usepackage[table]{xcolor}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{HalluCodeDetection: Detecção de Alucinações em Code Generation}
+
+\author{
+\IEEEauthorblockN{João Vitor Mergulhão}
+\IEEEauthorblockA{\textit{Centro de Informática} \\
+\textit{Universidade Federal de Pernambuco}\\
+Recife, Brasil \\
+jvlm2@cin.ufpe.br}
+\and
+\IEEEauthorblockN{Rubens Nascimento de Lima}
+\IEEEauthorblockA{\textit{Centro de Informática} \\
+\textit{Universidade Federal de Pernambuco}\\
+Recife, Brasil \\
+rnl2@cin.ufpe.br}
+}
+
+ \maketitle
+
+\begin{abstract}
+Modelos de linguagem de grande escala têm demonstrado bom desempenho em benchmarks de geração de código, mas ainda produzem alucinações, especialmente na forma de erros funcionais que não são capturados por avaliações puramente binárias \cite{2407.06153,2504.20799}. Este trabalho investiga a detecção automática de alucinações em código Python gerado por LLMs, combinando um benchmark existente de problemas de programação com um processo de rotulagem automatizada e destilação a partir de um modelo mais forte. A partir desse conjunto de dados, é treinado um modelo especializado para classificar o tipo de erro em múltiplas categorias e seu desempenho é comparado ao de modelos não adaptados e de outros modelos de código. Os resultados mostram que, embora a acurácia global na detecção de alucinações seja moderada, a tarefa de diferenciar entre tipos de falhas, em especial erros funcionais e de execução, permanece substancialmente mais difícil do que identificar código correto, destacando a importância de abordagens dedicadas para avaliação de alucinações em geração de código.
+\end{abstract}
+
+\begin{IEEEkeywords}
+CodeLLMs, Geração de Código, Alucinação, LLM-as-a-judge, MBPP, QLoRA, Detecção de Erros.
+\end{IEEEkeywords}
+
+\section{Introdução}
+
+Modelos de linguagem de grande escala vêm sendo cada vez mais empregados em tarefas de geração de código, tanto em contextos educacionais quanto em cenários de desenvolvimento de software, onde são utilizados para sintetizar funções, resolver problemas de programação e apoiar atividades de manutenção. Apesar dos avanços recentes, diversos estudos apontam que o código gerado por esses modelos ainda apresenta uma quantidade substancial de falhas, especialmente quando se consideram tarefas mais complexas e próximas de cenários de uso reais \cite{2407.06153,2108.07732}. Avaliações em conjuntos de problemas de programação de mundo real mostram que mesmo modelos de ponta atingem taxas relativamente baixas de soluções corretas na primeira tentativa e que os erros se distribuem entre falhas funcionais, de execução e de sintaxe, o que torna insuficiente uma análise baseada apenas em métricas agregadas de acerto.
+
+Em paralelo, a literatura sobre alucinação em modelos de linguagem tem destacado que, no contexto de geração de código, esse fenômeno não se limita a saídas obviamente inválidas, como código que não compila, mas inclui situações em que o modelo produz implementações plausíveis que, entretanto, não respeitam completamente os requisitos funcionais ou introduzem comportamentos incorretos \cite{2504.20799}. Survey recentes dedicados a CodeLLMs propõem taxonomias específicas de alucinação em código, distinguindo, por exemplo, entre problemas sintáticos, desvios semânticos e violações de requisitos, e revisam benchmarks e estratégias de mitigação, evidenciando a necessidade de classificações mais finas do que uma simples distinção entre “correto” e “incorreto” \cite{2504.20799,2408.08333,2410.09997}. Essas taxonomias fornecem uma base conceitual importante para definir classes de erro que sejam operacionalmente verificáveis em experimentos com geração de código.
+
+Outra linha de pesquisa relacionada investiga o uso de modelos de linguagem como avaliadores automáticos de código, no paradigma conhecido como LLM-as-a-judge. Estudos recentes mostram que modelos de grande porte, como variantes baseadas em GPT-4, podem atuar como juízes para tarefas de geração e sumarização de código, mas ainda apresentam taxas não desprezíveis de julgamentos incorretos, sobretudo em casos em que o código é parcialmente correto ou falha apenas em subconjuntos específicos de testes \cite{2507.16587}. Além disso, esses trabalhos indicam que modelos menores têm desempenho significativamente inferior como juízes, tanto em termos de concordância com rótulos de referência quanto na capacidade de distinguir entre soluções realmente corretas e soluções apenas aparentemente corretas, o que reforça o caráter desafiador da avaliação automática de código por LLMs.
+
+Nesse contexto, este trabalho investiga a detecção de alucinações em código Python gerado por LLMs a partir de uma taxonomia operacional com quatro classes: \texttt{syntax\_error}, \texttt{runtime\_error}, \texttt{functional\_error} e \texttt{correct}, inspirada em estudos empíricos sobre erros em código e em taxonomias de alucinação em geração de código \cite{2407.06153,2504.20799}. Para isso, é construído um conjunto de dados a partir do benchmark MBPP, no qual diferentes modelos de código geram soluções para os problemas e são automaticamente rotulados com base na capacidade de compilação, execução e passagem nos casos de teste. Em seguida, um modelo de maior porte é utilizado em um processo de destilação para produzir explicações em linguagem natural sobre a classificação atribuída a cada exemplo, enriquecendo o dataset com justificativas textuais.
+
+Sobre esse conjunto de dados, realiza-se o ajuste fino de um modelo base de 4 bilhões de parâmetros utilizando QLoRA, formulando a tarefa como a geração de um rótulo de nível de erro e de uma explicação em formato JSON. O desempenho do modelo treinado é então comparado com o modelo base e com outros modelos de código em uma tarefa de classificação multiclasse que considera apenas a predição do nível de erro. A análise dos resultados permite avaliar em que medida o ajuste fino especializado melhora (ou não) a capacidade de distinguir entre diferentes tipos de alucinação, e como essa capacidade varia entre modelos de diferentes portes e arquiteturas. A partir dessas evidências, o trabalho discute as dificuldades específicas da detecção de alucinações funcionais e de execução, bem como as limitações de abordagens binárias de avaliação, motivando o desenvolvimento de métodos e datasets que tratem explicitamente a classificação de tipos de alucinação em geração de código.
+
+\section{Revisão Literária}
+
+\begin{table*}[!htbp]
+\centering
+\caption{Comparação entre benchmarks e abordagens relacionadas à detecção de alucinações em código}
+\label{tab:benchmarks-relacionados}
+
+\small
+\begin{tabular}{p{0.18\linewidth} p{0.25\linewidth} p{0.25\linewidth} p{0.24\linewidth}}
+\toprule
+\textbf{Trabalho} & \textbf{Foco principal} & \textbf{Forma de classificação} & \textbf{Relação com este trabalho} \\
+\midrule
+
+HalluCode \cite{2404.00971} &
+Análise e avaliação de alucinações em código gerado por LLMs. &
+Taxonomia temática com diferentes categorias de alucinação em código. &
+Motiva a classificação por tipos de alucinação, mas adota uma organização mais semântica das falhas. \\
+
+CodeHalu / CodeHaluEval \cite{2405.00253} &
+Investigação de alucinações em código por verificação baseada em execução. &
+Categorias como \emph{mapping}, \emph{naming}, \emph{resource} e \emph{logic hallucinations}. &
+É próximo ao objetivo deste trabalho, mas utiliza uma taxonomia diferente da classificação operacional adotada aqui. \\
+
+CodeMirage \cite{2408.08333} &
+Benchmark de snippets Python alucinados gerados por LLMs. &
+Anotações associadas a tipos de defeitos, como erro sintático, erro lógico, robustez e segurança. &
+Também trata alucinação em geração de código e utiliza bases como MBPP, mas o presente trabalho foca no treinamento de um detector multiclasse. \\
+
+Collu-Bench \cite{2410.09997} &
+Predição de alucinações em tarefas de geração de código e reparo automático. &
+Rótulos e sinais adicionais associados à presença de alucinação, probabilidades de geração, tokens e feedback de execução. &
+Fornece uma formulação ampla para previsão de alucinações, enquanto este trabalho enfatiza a classificação do tipo de falha final observada. \\
+
+Delulu \cite{2605.07024} &
+Benchmark multilíngue para detecção de alucinações em tarefas de \emph{Fill-in-the-Middle}. &
+Quatro tipos de alucinação verificados por execução e revisão humana. &
+Mostra avanços recentes em benchmarks verificados, mas em uma tarefa diferente da geração completa de soluções para problemas de programação. \\
+
+Este trabalho &
+Detecção de alucinações em soluções geradas para problemas de programação. &
+Classificação em \emph{Erro de Sintaxe}, \emph{Erro em Tempo de Execução}, \emph{Erro Funcional} e \emph{Código Correto}. &
+Propõe e avalia um modelo especializado para detecção multiclasse de alucinação em geração de código, com rótulos derivados de compilação, execução e testes. \\
+
+\bottomrule
+\end{tabular}
+\end{table*}
+
+Estudos recentes mostram que, embora LLMs atinjam bons resultados em benchmarks de geração de código, o código produzido ainda apresenta uma quantidade significativa de falhas em cenários mais realistas. Um estudo que avalia diferentes modelos em tarefas de programação reporta que mesmo o melhor modelo testado, baseado em GPT-4, obtém apenas 44{,}3\% de soluções corretas na primeira tentativa, com erros distribuídos entre aproximadamente 37{,}1\% de falhas funcionais, 12{,}9\% de erros de tempo de execução e 5{,}7\% de erros de sintaxe \cite{2407.06153}. Além disso, mesmo após estratégias de reparo automatizado, parte relevante dos problemas permanece sem correção \cite{2407.06153}. Esses resultados indicam que a avaliação de código gerado por LLMs não deve se limitar à taxa geral de acerto, pois diferentes tipos de falha possuem causas, impactos e graus de dificuldade distintos.
+
+Além da análise de bugs em código gerado, trabalhos recentes passaram a tratar explicitamente alucinações em CodeLLMs. Um survey sobre o tema discute manifestações como referências a APIs inexistentes, uso incorreto de bibliotecas, chamadas a funções inexistentes e implementações logicamente inconsistentes com a especificação \cite{2504.20799}. Essa perspectiva reforça que alucinações em código não se limitam a erros evidentes de sintaxe. Em muitos casos, o código produzido aparenta ser plausível, mas só revela o problema durante a execução ou quando confrontado com os testes esperados. Por isso, categorias como \emph{Erro de Sintaxe}, \emph{Erro em Tempo de Execução} e \emph{Erro Funcional} são relevantes para caracterizar de forma mais precisa os problemas gerados por LLMs \cite{2504.20799,2404.00971,2405.00253}.
+
+Outra linha de pesquisa relacionada investiga o uso de LLMs como avaliadores automáticos, no paradigma de \emph{LLM-as-a-judge}. Estudos voltados para tarefas de geração e sumarização de código mostram que modelos mais fortes conseguem atuar como avaliadores úteis em alguns cenários, mas ainda cometem julgamentos incorretos, especialmente quando o código contém erros sutis ou falha apenas em parte dos casos de teste \cite{2507.16587}. Modelos menores tendem a apresentar desempenho inferior nessa tarefa, tanto em termos de concordância com rótulos de referência quanto na capacidade de distinguir soluções corretas de soluções apenas aparentemente corretas \cite{2507.16587}. Esse cenário motiva a investigação de modelos especializados para detecção de alucinações em código, em vez de depender exclusivamente de julgamentos genéricos produzidos por LLMs de propósito geral.
+
+No contexto de datasets e benchmarks, diferentes trabalhos propõem formas de avaliar alucinações em código, variando quanto à tarefa, à taxonomia adotada, ao tipo de rótulo e ao grau de replicabilidade. Trabalhos como HalluCode e CodeHalu investigam explicitamente taxonomias de alucinação em código, propondo categorias que ajudam a compreender os diferentes modos como LLMs podem produzir saídas incorretas ou inconsistentes \cite{2404.00971,2405.00253}. Outros benchmarks, como CodeMirage, Collu-Bench e Delulu, avançam na construção de conjuntos de avaliação voltados à detecção de alucinações, mas diferem quanto ao escopo experimental, incluindo tarefas de geração de código, reparo automático ou preenchimento de código \cite{2408.08333,2410.09997,2605.07024}.
+
+Apesar desses avanços, ainda há espaço para abordagens que aproximem a detecção de alucinações do comportamento observável do código durante compilação, execução e validação por testes. Algumas propostas utilizam taxonomias semânticas mais amplas, enquanto outras enfatizam a presença ou ausência de alucinação, sinais internos da geração ou tarefas específicas. Neste trabalho, a classificação adotada é inspirada em estudos que distinguem tipos de erro em código gerado, mas é aplicada ao treinamento de um modelo especializado para detecção multiclasse de alucinações em geração de código. Assim, o foco principal não está apenas na construção do conjunto de dados, mas na avaliação de um detector capaz de identificar o tipo de falha presente em uma solução gerada. A Tabela~\ref{tab:benchmarks-relacionados} resume os principais trabalhos relacionados e posiciona a contribuição deste estudo em relação a eles.
+
+De forma geral, a literatura indica que alucinações em código podem assumir diferentes formas, desde problemas sintáticos simples até falhas funcionais mais difíceis de identificar \cite{2407.06153,2504.20799}. Ao mesmo tempo, benchmarks recentes mostram que a área tem avançado na avaliação desse fenômeno, mas ainda há variação significativa na forma como as alucinações são definidas, rotuladas e detectadas \cite{2404.00971,2405.00253,2408.08333,2410.09997,2605.07024}. Nesse contexto, este trabalho se posiciona como uma abordagem voltada ao treinamento e avaliação de um modelo especializado para detectar e classificar tipos de alucinação em geração de código, aproximando os rótulos do comportamento efetivamente observado durante compilação, execução e validação funcional das soluções.
+
+\section{Metodologia}
+
+\subsection{Criação do Dataset}
+
+Para a criação do conjunto de dados de alucinações em código, foram utilizados modelos de linguagem executados localmente por meio do Ollama. A Tabela~\ref{tab:modelos-dataset} apresenta os modelos empregados na geração das soluções, juntamente com suas respectivas quantidades de parâmetros.
+
+\begin{table}[!htbp]
+\centering
+\caption{Modelos utilizados para geração de alucinações}
+\label{tab:modelos-dataset}
+
+\begin{tabular}{lc}
+\toprule
+\textbf{Modelo} & \textbf{Quantidade de Parâmetros} \\
+\midrule
+GPT-OSS & 20B \\
+Gemma 3 & 4B \\
+Qwen2.5-Coder & 7B \\
+DeepSeek-Coder & 6{,}7B \\
+Qwen & 9B \\
+Gemma 3 & 1B \\
+StarCoder2 & 3B \\
+StarCoder2 & 15B \\
+Gemma 4 & 4B \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.2cm}
+\begin{minipage}{0.85\linewidth}
+\footnotesize
+\textit{Observação: todos os modelos foram executados com quantização \emph{Q4\_K\_M}, permitindo a utilização de modelos de maior porte dentro das limitações de hardware disponíveis.}
+\end{minipage}
+
+\end{table}
+
+A utilização de modelos quantizados foi motivada pelas restrições de hardware disponíveis durante os experimentos, especialmente o limite de 16~GB de VRAM. Em vez de restringir a avaliação apenas a modelos menores em precisão plena, a quantização permitiu executar localmente modelos de maior porte, incluindo arquiteturas com até 20 bilhões de parâmetros. Essa escolha metodológica está alinhada a evidências recentes da literatura sobre geração de código, as quis observam que a quantização pós-treinamento em 4 bits pode reduzir substancialmente o uso de memória sem necessariamente provocar degradação significativa no desempenho de modelos de linguagem para geração de código \cite{2503.07103}. Assim, neste trabalho, a quantização foi adotada como uma estratégia prática para viabilizar a comparação entre modelos mais capazes dentro do orçamento computacional disponível.
+
+Como benchmark para a geração das soluções foi utilizado o MBPP em sua versão \textit{sanitized}, composta por problemas de programação em Python acompanhados de casos de teste baseados em \textit{asserts}. Para cada problema, foi solicitada apenas uma geração por modelo, com um prompt que instruía o sistema a produzir somente a implementação da função requerida, sem comentários adicionais, exemplos de uso ou testes embutidos. Modelos cujas saídas não atenderam de forma consistente ao formato necessário para a etapa posterior de processamento foram descartados do conjunto final, pois o pipeline exigia respostas estruturáveis e compatíveis com a análise automática subsequente.
+
+A rotulagem inicial das soluções foi realizada por meio de um pipeline automático baseado na execução do código gerado e na verificação dos testes originais do benchmark. A partir desse processo, cada solução foi associada a uma das quatro categorias apresentadas na Tabela~\ref{tab:categorias_rotulagem}. Essa definição operacional das classes é consistente com a separação entre erros de sintaxe, erros de execução e desvios funcionais discutida na literatura, tanto em estudos empíricos sobre erros em código gerado por LLMs \cite{2407.06153} quanto em taxonomias de alucinação específicas para geração de código \cite{2504.20799}.
+
+\begin{table}[!htbp]
+    \centering
+    \caption{Categorias utilizadas na rotulagem das soluções}
+    \label{tab:categorias_rotulagem}
+
+    \small
+    \begin{tabular}{p{0.34\linewidth} p{0.56\linewidth}}
+        \toprule
+        \textbf{Categoria} & \textbf{Descrição} \\
+        \midrule
+        \emph{Erro de Sintaxe} &
+        O código gerado não podia ser compilado ou interpretado devido a problemas estruturais na linguagem. \\
+
+        \emph{Erro em Tempo de Execução} &
+        O código era sintaticamente válido, mas sua execução era encerrada com exceção ou erro durante os testes. \\
+
+        \emph{Erro Funcional} &
+        O código era executado sem exceções, mas falhava em pelo menos um caso de teste do benchmark. \\
+
+        \emph{Código Correto} &
+        O código era executado corretamente e satisfazia todos os casos de teste associados ao problema. \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Após essa etapa, o modelo com melhor desempenho na geração de código entre os modelos executáveis localmente foi utilizado no processo de destilação para produzir explicações textuais sobre a classificação atribuída a cada exemplo. No processo de destilação, o modelo recebia a descrição do problema, o código gerado, a classe previamente atribuída pelo pipeline e o resultado da execução no terminal, com o objetivo de explicar por que aquela solução pertencia à classe indicada. A saída esperada seguia um formato estruturado em JSON, contendo o nível da classificação e uma explicação em linguagem natural.
+
+Apesar da presença das explicações no conjunto intermediário produzido pela destilação, a formulação final da tarefa de detecção utilizou apenas a descrição do problema e o código gerado como entrada do modelo, enquanto a classe correspondente foi tratada como alvo principal. Dessa forma, a explicação produzida durante a destilação permaneceu como informação complementar no processo de supervisão, mas não foi utilizada como entrada direta na etapa final de treinamento do classificador.
+
+\subsection{Treinamento do Modelo}
+
+A etapa de treinamento foi conduzida sobre o Gemma 3 Instruct de 4 bilhões de parâmetros, adotado como modelo base por representar o maior modelo que podia ser adaptado localmente dentro da limitação de memória disponível e por ter apresentado desempenho competitivo nas avaliações preliminares. O ajuste foi realizado com QLoRA, mantendo os pesos do modelo base quantizados em 4 bits e treinando apenas adaptadores LoRA, o que reduz substancialmente o custo computacional do \textit{fine-tuning} sem exigir a atualização integral dos parâmetros do modelo.
+
+O conjunto de dados foi dividido de forma estratificada pela coluna de classe, com 10\% reservado para validação e 20\% para teste, utilizando semente fixa igual a 42. O treinamento foi formulado como uma tarefa de geração supervisionada de JSON, em que o modelo recebia como entrada a descrição do problema e o código candidato, devendo produzir uma resposta contendo a classe prevista e uma justificativa textual. A adaptação foi realizada sobre os módulos lineares do modelo, utilizando o otimizador AdamW com implementação fundida.
+
+Além da configuração inicial, foram treinadas diferentes configurações de hiperparâmetros com o objetivo de avaliar o impacto de escolhas associadas aos adaptadores LoRA e ao processo de otimização. A seleção da configuração final foi feita a partir do desempenho no conjunto de validação. Os hiperparâmetros variados durante essa busca são apresentados na Tabela~\ref{tab:hiperparametros-treinamento}.
+
+\begin{table}[!htbp]
+\centering
+\caption{Hiperparâmetros variados durante o treinamento}
+\label{tab:hiperparametros-treinamento}
+
+\small
+\begin{tabular}{p{0.22\linewidth} p{0.22\linewidth} p{0.46\linewidth}}
+\toprule
+\textbf{Parâmetro} & \textbf{Valores variados} & \textbf{Explicação} \\
+\midrule
+LoRA r & 16 e 32 & Define a dimensão interna das matrizes de baixa ordem usadas pelos adaptadores LoRA. Valores maiores aumentam a capacidade de adaptação, mas também elevam o número de parâmetros treináveis. \\
+
+LoRA alpha & 8, 16 e 32 & Controla o fator de escala aplicado às atualizações dos adaptadores LoRA. Esse parâmetro influencia a intensidade com que as atualizações aprendidas afetam o comportamento do modelo base. \\
+
+LoRA dropout & 0{,}05 e 0{,}10 & Define a taxa de descarte aplicada durante o treinamento dos adaptadores LoRA, funcionando como regularização para reduzir sobreajuste. \\
+
+Learning rate & \(5 \times 10^{-5}\) e \(1 \times 10^{-4}\) & Determina o tamanho dos passos de atualização durante a otimização. Taxas maiores podem acelerar o aprendizado, mas também aumentar a instabilidade do treinamento. \\
+
+Epochs & 3, 4 e 5 & Indica quantas vezes o modelo percorre o conjunto de treinamento. Um número maior de épocas pode melhorar o ajuste, mas também aumentar o risco de sobreajuste. \\
+
+Bias & \emph{none}, \emph{lora\_only} e \emph{all} & Define quais termos de viés são atualizados durante o treinamento. Essa escolha altera a quantidade de parâmetros ajustáveis e a flexibilidade da adaptação. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Outros fatores de treinamento foram mantidos fixos durante os experimentos, incluindo a estratégia QLoRA, a aplicação dos adaptadores aos módulos lineares, o particionamento estratificado dos dados, a semente aleatória, o formato da tarefa e o otimizador utilizado. Dessa forma, a busca concentrou-se nos efeitos dos hiperparâmetros apresentados na Tabela~\ref{tab:hiperparametros-treinamento}.
+
+
+\subsection{Avaliação de Alucinação}
+
+A avaliação foi realizada sobre o conjunto de teste obtido na divisão estratificada do dataset construído neste trabalho. Foram comparados o modelo base, sua versão adaptada com QLoRA e os demais modelos locais utilizados anteriormente na geração de código, todos submetidos ao mesmo prompt de análise de alucinação. Nessa etapa, diferentemente do processo de destilação, a entrada continha apenas a descrição do problema e o código candidato, de modo que todos os modelos fossem avaliados sob a mesma quantidade de informação disponível.
+
+Cada modelo foi instruído a retornar uma saída estruturada contendo a classe predita para o exemplo e uma justificativa textual. Entretanto, a análise quantitativa considerou apenas o campo referente à classe prevista, desconsiderando a justificativa gerada. As previsões foram avaliadas considerando as quatro categorias definidas no conjunto de dados: \emph{Erro de Sintaxe}, \emph{Erro em Tempo de Execução}, \emph{Erro Funcional} e \emph{Código Correto}.
+
+Como métrica principal, foi adotada a acurácia por classe, calculada como a proporção de exemplos corretamente identificados dentro de cada categoria de referência. Essa métrica permite observar em quais tipos de erro cada modelo apresenta maior ou menor capacidade de identificação, evitando que o desempenho geral oculte dificuldades específicas em classes menos frequentes ou mais difíceis de distinguir.
+
+\section{Resultados}
+
+\subsection{Alucinações da Construção do Dataset}
+
+\begin{table*}[!htbp]
+    \centering
+    \caption{Alucinações observadas na construção do dataset}
+    \label{tab:dataset_construcao_modelos}
+
+    \small
+    \begin{tabular}{lcrrrr}
+        \toprule
+        \textbf{Modelo} & \textbf{Parâmetros} & \textbf{Código Correto} & \textbf{Erros Funcionais} & \textbf{Erros de Execução} & \textbf{Erros de Sintaxe} \\
+        \midrule
+        Gemma 3        & 1B   & 39{,}2\% & 44{,}2\% & 15{,}0\% & 1{,}7\% \\
+        Gemma 3        & 4B   & 58{,}3\% & 35{,}8\% & 5{,}8\%  & \textbf{0{,}0\%} \\
+        Gemma 4        & 4B   & 58{,}3\% & 30{,}8\% & 5{,}0\%  & 5{,}8\% \\
+        GPT-OSS        & 20B  & \textbf{75{,}8\%} & \textbf{15{,}8\%} & 7{,}5\%  & 0{,}8\% \\
+        Qwen2.5-Coder  & 7B   & 59{,}2\% & 35{,}0\% & 5{,}8\%  & \textbf{0{,}0\%} \\
+        Qwen            & 9B   & 65{,}0\% & 30{,}0\% & \textbf{4{,}2\%} & 0{,}8\% \\
+        \bottomrule
+    \end{tabular}
+\end{table*}
+
+
+
+Na etapa de geração de código para construção do conjunto de dados, foram obtidas 720 instâncias anotadas. A distribuição global das classes resultantes é composta por 427 exemplos classificados como \emph{Código Correto} (59{,}3\%), 230 como \emph{Erro Funcional} (31{,}9\%), 52 como \emph{Erro em Tempo de Execução} (7{,}2\%) e 11 como \emph{Erro de Sintaxe} (1{,}5\%). Essa distribuição indica que a maior parte das falhas observadas está relacionada a desvios funcionais em relação aos testes, em linha com a predominância de erros funcionais relatada em estudos sobre código gerado por LLMs \cite{2407.06153,2504.20799}.
+
+A Tabela~\ref{tab:dataset_construcao_modelos} apresenta a distribuição de classes por modelo na fase de construção do dataset. Observa-se que o GPT-OSS foi o modelo que produziu maior proporção de soluções corretas, com aproximadamente 75{,}8\% dos exemplos na classe \emph{Código Correto}, seguido por Qwen, com 65{,}0\%. Em contraste, o Gemma 3 de 1 bilhão de parâmetros apresentou apenas 39{,}2\% de exemplos corretos e proporções mais elevadas de \emph{Erro Funcional} e \emph{Erro em Tempo de Execução}, evidenciando um comportamento mais instável na geração de código. De maneira geral, a distribuição por modelo reforça que há variações significativas na taxa e no tipo de alucinação produzida, mesmo entre modelos capazes de gerar soluções sintaticamente plausíveis.
+
+A Figura~\ref{fig:distribuicao_modelos_pizza} ilustra a distribuição das quatro classes para cada um dos modelos na fase de construção do dataset, por meio de gráficos de pizza agregados em uma única imagem. Já a Figura~\ref{fig:distribuicao_splits} apresenta a distribuição das classes nos subconjuntos de treino, validação e teste após a divisão estratificada do conjunto de dados. Essa divisão manteve proporções semelhantes das quatro classes em cada subconjunto, garantindo que o modelo de detecção fosse treinado e avaliado em condições consistentes em relação à presença de \emph{Erro de Sintaxe}, \emph{Erro em Tempo de Execução}, \emph{Erro Funcional} e \emph{Código Correto}.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\linewidth]{images/classification.jpeg}
+    \caption{Distribuição das classes por modelo na fase de construção do dataset.}
+    \label{fig:distribuicao_modelos_pizza}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\linewidth]{images/training_dataset_distribution.png}
+    \caption{Distribuição das classes nos subconjuntos de treino, validação e teste.}
+    \label{fig:distribuicao_splits}
+\end{figure}
+
+\subsection{Resultados da Busca de Hiperparâmetros do QLoRA}
+
+A busca de hiperparâmetros foi realizada com o objetivo de avaliar diferentes configurações de adaptação do modelo base por meio de QLoRA. Foram comparadas quatro configurações, variando principalmente parâmetros associados aos adaptadores LoRA e ao processo de treinamento. A Tabela~\ref{tab:resultados_hiperparametros} apresenta os resultados obtidos no conjunto de treino e no conjunto de validação.
+
+\begin{table*}[!htbp]
+    \centering
+    \caption{Resultados da busca de hiperparâmetros}
+    \label{tab:resultados_hiperparametros}
+
+    \small
+    \begin{tabular}{ccccccc}
+        \toprule
+        \textbf{LoRA r} & \textbf{LoRA $\alpha$} & \textbf{Dropout} & \textbf{Epochs} & \textbf{Bias} & \textbf{Treino} & \textbf{Valid.} \\
+        \midrule
+        32 & 8  & 0{,}05 & 4 & LoRA only & 76{,}54\% & 65{,}28\% \\
+        16 & 32 & 0{,}05 & 3 & None      & 68{,}59\% & 68{,}06\% \\
+        16 & 16 & 0{,}05 & 3 & All       & 71{,}37\% & \textbf{69{,}44\%} \\
+        32 & 32 & 0{,}10 & 5 & None      & 76{,}34\% & 62{,}50\% \\
+        \bottomrule
+    \end{tabular}
+\end{table*}
+
+A melhor configuração foi selecionada a partir da acurácia obtida no conjunto de validação. O melhor resultado foi alcançado pela configuração com LoRA r igual a 16, LoRA $\alpha$ igual a 16, dropout de 0{,}05, três épocas de treinamento e atualização de todos os termos de viés. Essa configuração obteve 71{,}37\% de acurácia no conjunto de treino e 69{,}44\% no conjunto de validação, sendo utilizada como modelo final nas avaliações subsequentes.
+
+Observa-se que as configurações com maior acurácia no treino não apresentaram necessariamente melhor desempenho na validação. Em especial, as configurações com LoRA r igual a 32 atingiram acurácias de treino superiores a 76\%, mas tiveram desempenho inferior no conjunto de validação. Esse comportamento sugere que o aumento da capacidade dos adaptadores, combinado a mais épocas ou maior flexibilidade de ajuste, pode ter favorecido maior adaptação ao conjunto de treino sem produzir melhor generalização.
+
+\subsection{Detecção de Alucinação}
+
+\begin{table*}[t]
+    \centering
+    \caption{Desempenho na detecção de alucinações}
+    \label{tab:avaliacao_modelos_classes}
+
+    \scriptsize
+    \resizebox{\textwidth}{!}{
+    \begin{tabular}{lcccccccc}
+        \toprule
+        \textbf{Modelo} & \textbf{Parâm.} & \textbf{Quant.} & \textbf{Acurácia Total} & \textbf{Ident. de Erros} & \textbf{Código Correto} & \textbf{Erros Func.} & \textbf{Erros Exec.} & \textbf{Erros Sint.} \\
+        \midrule
+        Pylint 3.x & --- & estático & 61{,}4\% (89/145) & 5{,}1\% (3/59) & \textbf{100{,}0\% (86/86)} & 0{,}0\% (0/46) & 9{,}1\% (1/11) & \textbf{100{,}0\% (2/2)} \\
+
+        GPT-OSS & 20B & Q4\_K\_M & 68{,}3\% (99/145) & 35{,}6\% (21/59) & 90{,}7\% (78/86) & 39{,}1\% (18/46) & 27{,}3\% (3/11) & 0{,}0\% (0/2) \\
+
+        Gemma 3 & 4B & Q4\_K\_M & 58{,}6\% (85/145) & 11{,}9\% (7/59) & 90{,}7\% (78/86) & 15{,}2\% (7/46) & 0{,}0\% (0/11) & 0{,}0\% (0/2) \\
+
+        Gemma 3 & 1B & Q4\_K\_M & 2{,}8\% (4/145) & 1{,}7\% (1/59) & 3{,}5\% (3/86) & 0{,}0\% (0/46) & 0{,}0\% (0/11) & \textbf{50{,}0\% (1/2)} \\
+
+        Gemma 4 & 8B & Q4\_K\_M & 67{,}6\% (98/145) & 39{,}0\% (23/59) & 87{,}2\% (75/86) & \textbf{43{,}5\% (20/46)} & 27{,}3\% (3/11) & 0{,}0\% (0/2) \\
+
+        Qwen2.5-Coder & 7B & Q4\_K\_M & 62{,}1\% (90/145) & 11{,}9\% (7/59) & 96{,}5\% (83/86) & 13{,}0\% (6/46) & 9{,}1\% (1/11) & 0{,}0\% (0/2) \\
+
+        Gemma 3 4B IT & 4B & FP16 & 58{,}6\% (85/145) & 11{,}9\% (7/59) & 90{,}7\% (78/86) & 13{,}0\% (6/46) & 9{,}1\% (1/11) & 0{,}0\% (0/2) \\
+
+        \rowcolor{gray!10}
+        Modelo Treinado & 4B & QLoRA & \textbf{72{,}4\% (105/145)} & \textbf{42{,}4\% (25/59)} & 93{,}0\% (80/86) & 34{,}8\% (16/46) & \textbf{81{,}8\% (9/11)} & 0{,}0\% (0/2) \\
+        \bottomrule
+    \end{tabular}
+    }
+\end{table*}
+
+A Tabela~\ref{tab:avaliacao_modelos_classes} apresenta o desempenho dos modelos na tarefa de detecção de alucinações, considerando um conjunto de avaliação com 145 exemplos. Além dos modelos de linguagem, é incluído como linha de base o Pylint~3.x, um analisador estático amplamente utilizado em projetos Python. A inclusão do Pylint permite comparar a abordagem baseada em LLMs com ferramentas de análise estática tradicionais, comumente utilizadas como detectors de falhas de código na indústria. Foram avaliados o modelo base Gemma 3 4B IT em FP16, o modelo treinado com QLoRA e os demais modelos locais utilizados como avaliadores. Além da acurácia total, a tabela apresenta a acurácia agregada na identificação de exemplos incorretos e o desempenho separado por categoria: \emph{Código Correto}, \emph{Erros Funcionais}, \emph{Erros de Execução} e \emph{Erros de Sintaxe}.
+
+O melhor desempenho geral foi obtido pelo modelo treinado com QLoRA, que alcançou 72{,}4\% de acurácia total, correspondendo a 105 acertos em 145 exemplos. Esse resultado supera tanto o modelo base Gemma 3 4B IT, que obteve 58{,}6\%, quanto os demais modelos avaliados diretamente como detectores. Entre os modelos não treinados especificamente para a tarefa, os melhores resultados foram observados no GPT-OSS, com 68{,}3\% de acurácia total, e no Gemma 4, com 67{,}6\%. Apesar disso, ambos permaneceram abaixo do modelo treinado, indicando que o ajuste supervisionado com os rótulos propostos contribuiu para especializar o modelo na tarefa de detecção.
+
+O Pylint obteve 61{,}4\% de acurácia total, resultado aparentemente competitivo, porém enganoso: toda essa acurácia deriva da identificação perfeita de \emph{Código Correto} (100\%, 86/86), uma vez que a ferramenta prevê ``correto'' para qualquer código que não apresente erros estáticos detectáveis. Em \emph{Erros Funcionais}, o Pylint obteve 0\% de acurácia, pois a análise estática é incapaz de verificar se uma implementação satisfaz os requisitos funcionais de um problema sem executá-la. Em \emph{Erros de Execução}, identificou apenas 1 dos 11 casos (9{,}1\%), aquele que apresentava uma variável indefinida explicitamente declarada no código. Nos 2 casos de \emph{Erro de Sintaxe}, o Pylint alcançou 100\%, detectando corretamente os marcadores de bloco de código (\texttt{```}) deixados pelo modelo gerador sem a respectiva abertura da cerca. Esses resultados indicam que ferramentas de análise estática, embora eficazes em casos triviais, possuem uma limitação estrutural na detecção de alucinações em código: são essencialmente cegas à classe de \emph{Erro Funcional}, que corresponde a 31{,}7\% do conjunto de teste e representa o tipo mais frequente de alucinação observado.
+
+A comparação entre o modelo base e o modelo treinado é especialmente relevante, pois permite observar o efeito direto do treinamento sobre a capacidade de classificação. O modelo base apresentou desempenho elevado em \emph{Código Correto}, com 90{,}7\% de acurácia nessa categoria, mas teve desempenho limitado nas classes de erro: 13{,}0\% em \emph{Erros Funcionais}, 9{,}1\% em \emph{Erros de Execução} e 0{,}0\% em \emph{Erros de Sintaxe}. Esse comportamento sugere uma tendência do modelo base a favorecer a classe majoritária ou soluções aparentemente corretas, dificuldade já discutida em estudos sobre avaliação automática de código por LLMs, especialmente quando os erros são sutis ou dependem da validação por testes \cite{2507.16587}.
+
+Após o treinamento, o modelo adaptado manteve desempenho elevado em \emph{Código Correto}, com 93{,}0\%, mas apresentou ganhos mais expressivos nas categorias associadas a alucinações. A acurácia agregada na identificação de exemplos incorretos subiu de 11{,}9\% no modelo base para 42{,}4\% no modelo treinado. Esse resultado indica que o modelo não ficou apenas condicionado a predizer a classe mais frequente do conjunto, mas passou a reconhecer melhor padrões associados a falhas no código gerado.
+
+O ganho mais evidente ocorreu em \emph{Erros de Execução}. O modelo base acertou apenas 1 dos 11 exemplos dessa categoria, enquanto o modelo treinado acertou 9 de 11, atingindo 81{,}8\% de acurácia, o melhor resultado entre todos os modelos avaliados. Em \emph{Erros Funcionais}, o modelo treinado também avançou em relação ao modelo base, passando de 13{,}0\% para 34{,}8\%. Embora o Gemma 4 tenha apresentado o maior valor nessa categoria, com 43{,}5\%, o modelo treinado obteve o melhor equilíbrio geral entre acurácia total, identificação de erros e manutenção de bom desempenho em código correto.
+
+As matrizes de confusão do modelo base e do modelo treinado, apresentadas nas Figuras~\ref{fig:confusao_base} e~\ref{fig:confusao_adaptado}, ajudam a visualizar essa mudança de comportamento. No modelo base, observa-se maior concentração das previsões na classe \emph{Código Correto}, o que contribui para bons resultados nessa categoria, mas limita a identificação de falhas. Já no modelo treinado, há uma redistribuição das previsões, com maior capacidade de reconhecer exemplos pertencentes às classes de erro, especialmente \emph{Erros de Execução}. Esse padrão reforça que o treinamento alterou de forma relevante o comportamento do modelo, mesmo quando a tarefa envolve falhas que não são necessariamente evidentes apenas pela aparência superficial do código.
+
+A classe \emph{Erros de Sintaxe}, por sua vez, deve ser interpretada com cautela, pois possui apenas dois exemplos no conjunto avaliado. O único modelo que obteve acerto nessa categoria foi o Gemma 3 de 1 bilhão de parâmetros, mas esse resultado corresponde a apenas um exemplo corretamente classificado e não indica, isoladamente, melhor capacidade geral de detecção. Essa limitação reforça a importância de interpretar os resultados por classe considerando também a quantidade absoluta de exemplos disponíveis.
+
+De forma geral, os resultados indicam que o treinamento com QLoRA foi efetivo para especializar o modelo na detecção de alucinações em código. O ganho em acurácia total foi acompanhado por melhora expressiva na identificação de exemplos incorretos, principalmente em erros de execução e, em menor grau, em erros funcionais. Esse comportamento é consistente com a literatura que aponta a dificuldade de identificar falhas funcionais e comportamentais em código gerado por LLMs, especialmente quando o código é sintaticamente plausível e os problemas só aparecem durante a execução ou validação por testes \cite{2407.06153,2504.20799,2507.16587}.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\linewidth]{images/confusion_matrix_base_gemma.png}
+    \caption{Matriz de confusão do modelo base na classificação dos tipos de alucinação.}
+    \label{fig:confusao_base}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\linewidth]{images/confusion_matrix_adapted_gemma.png}
+    \caption{Matriz de confusão do modelo treinado com QLoRA.}
+    \label{fig:confusao_adaptado}
+\end{figure}
+
+\subsection{Análise Qualitativa de Casos de Divergência}
+
+A comparação entre as predições do modelo base e do modelo treinado revela 32 casos de divergência no conjunto de teste. Em 26 desses casos, o modelo treinado acertou e o modelo base errou, enquanto nos 6 restantes ocorreu o inverso. A análise das justificativas produzidas por cada modelo nesses casos permite identificar padrões qualitativos que complementam os resultados quantitativos.
+
+\textbf{Viés do modelo base por \emph{Código Correto}.}
+O padrão mais recorrente nas melhorias do modelo treinado é o viés do modelo base por classificar código como correto mesmo quando há falhas reais. Dos 26 casos de melhoria, 12 envolvem a predição incorreta de \emph{Código Correto} para exemplos com \emph{Erro Funcional}, e 7 dizem respeito a exemplos com \emph{Erro de Execução} classificados como corretos pelo modelo base. Em vários desses casos, as justificativas produzidas pelo modelo base descrevem a lógica do código como correta sem analisar criticamente se a implementação satisfaz os requisitos do problema. Por exemplo, ao analisar uma função que calculava números de Jacobsthal com a recorrência invertida (\texttt{a, b = b, 2*b + a} em vez de \texttt{a, b = b, 2*a + b}), o modelo base concluiu que ``\emph{the code correctly calculates the nth Jacobsthal number}'', sem verificar os valores produzidos pela sequência iterativa. O modelo treinado, por sua vez, identificou explicitamente o erro, detalhando que a recorrência implementada produz valores incorretos para $n \geq 2$ e que o modelo deve usar $J(n) = 2 \cdot J(n-1) + J(n-2)$.
+
+\textbf{Detecção de erros de execução mascarados.}
+Outro padrão relevante envolve situações em que o código falha em tempo de execução por razões não imediatamente evidentes na leitura superficial. Um exemplo encontrado no conjunto de teste apresentava uma função para verificar se um array representa um min-heap, cuja implementação realizava a verificação apenas sobre os nós, sem nunca invocar o ponto de entrada correto sobre a raiz. O modelo base concluiu que ``\emph{the code correctly implements the helper function to check if a given array represents a min heap}'', ignorando que o ponto de entrada da função jamais seria chamado com o índice raiz. O modelo treinado corretamente identificou o problema como \emph{Erro de Execução}, apontando que a variável \texttt{arr} não estaria definida no escopo esperado, levando a um \texttt{NameError} durante a execução dos testes.
+
+\textbf{Casos de regressão: confusão entre classes de erro.}
+Nas 6 regressões, dois padrões se destacam. Primeiro, 3 casos resultaram em saídas com formato inválido (\texttt{None}), indicando que o modelo treinado ocasionalmente falha em produzir um JSON bem formado, particularmente em exemplos com código mais longo ou com marcadores de bloco de código. Segundo, em 2 casos o modelo treinado classificou como \emph{Erro de Execução} exemplos que eram na verdade \emph{Código Correto} ou \emph{Erro Funcional}. Em um desses casos, uma função correta para calcular a soma dos produtos de todos os sublistas foi incorretamente sinalizada como \emph{Erro de Execução}, com o modelo treinado especulando sobre possíveis causas de falha no ambiente de execução sem fundamento observável no código. Essa tendência sugere que o treinamento, embora tenha ampliado a capacidade de detectar erros reais, também introduziu um viés parcial de excesso de suspeita sobre código correto, especialmente quando o código é estruturalmente mais complexo.
+
+\textbf{Confusão entre \emph{Erro Funcional} e \emph{Erro de Execução}.}
+Por fim, um caso de regressão ilustra a dificuldade de discriminar entre erros funcionais e de execução. Ao analisar uma função que definia corretamente uma lambda para verificar divisibilidade por dígitos, mas não iterava sobre o intervalo nem retornava uma lista, o modelo base classificou corretamente como \emph{Erro Funcional}, indicando que a lambda não era utilizada. O modelo treinado, entretanto, classificou como \emph{Erro de Execução}, argumentando que a ausência de iteração resultaria em um \texttt{TypeError} ao comparar o resultado da função com a lista esperada nos testes. Embora o argumento seja plausível, a classificação esperada era \emph{Erro Funcional}, e esse caso ilustra a tênue fronteira entre erros que se manifestam funcionalmente e aqueles que só aparecem como exceções em tempo de execução.
+
+\section{Conclusão}
+
+Os resultados obtidos neste trabalho mostram que alucinações em geração de código Python por LLMs tendem a se concentrar majoritariamente em desvios funcionais, enquanto erros de sintaxe e de execução aparecem com menor frequência, tanto na fase de construção do dataset quanto na avaliação dos modelos. Essa predominância de \texttt{functional\_error} está alinhada com estudos empíricos que indicam que modelos de linguagem, mesmo quando geram código sintaticamente válido e executável, frequentemente falham em capturar corretamente todos os requisitos funcionais de um problema \cite{2407.06153,2504.20799}. A análise da distribuição por modelo também evidencia que arquiteturas diferentes produzem perfis distintos de acertos e falhas, com modelos maiores como o gpt-oss:20b apresentando taxas mais altas de código correto, enquanto modelos menores, como o gemma3:1b, exibem proporções mais elevadas de erros funcionais e de execução.
+
+Na tarefa de identificação de alucinações, os resultados indicam que distinguir entre código correto e código com falhas funcionais ou de execução é substancialmente mais difícil do que reconhecer apenas exemplos \texttt{correct}. Embora o modelo base e o modelo treinado apresentem acurácias globais semelhantes, a comparação detalhada mostra que cerca de 17\% das previsões diferem entre eles, sugerindo que o ajuste fino modifica de forma significativa a fronteira de decisão entre as classes de erro. Além disso, a acurácia elevada em \texttt{correct}, contrastando com valores mais baixos em \texttt{functional\_error}, \texttt{runtime\_error} e \texttt{syntax\_error}, reforça a observação de que os modelos têm maior dificuldade em identificar falhas sutis de lógica e comportamento do que em reconhecer código plenamente correto. Em conjunto, essas evidências apontam para a relevância de taxonomias mais finas de erro e de modelos especializados para detecção de alucinação em código, em vez de abordagens puramente binárias de acerto/erro.
+
+\subsection{Próximos Passos}
+
+Com base nas evidências observadas, os próximos passos deste trabalho se concentram em aprofundar a investigação sobre como diferentes escolhas de treinamento e configuração afetam a capacidade do modelo de distinguir entre os tipos de alucinação. Uma das direções imediatas é realizar uma busca sistemática de hiperparâmetros na configuração LoRA utilizada no modelo treinado, variando parâmetros como \texttt{r}, \texttt{lora\_alpha}, \texttt{lora\_dropout} e os módulos-alvo, de modo a analisar se ajustes específicos podem reduzir a confusão entre classes de erro, em especial entre \texttt{functional\_error} e \texttt{correct}. Também está previsto comparar a formulação atual, em que o modelo gera um JSON com nível e explicação, com variantes em que o treinamento é voltado apenas para a predição do nível, ou em que a avaliação considera exclusivamente a classificação de \texttt{level}, permitindo isolar o impacto da geração de explicações na qualidade da detecção.
+
+Outra frente importante é a ampliação e o refinamento do conjunto de dados de alucinações. A criação de um dataset maior, com mais problemas de programação e mais exemplos em cada classe, pode aumentar a robustez do modelo em cenários de uso mais variados e melhorar o desempenho em classes menos frequentes, como \texttt{runtime\_error} e \texttt{syntax\_error}. Paralelamente, pretende-se conduzir análises qualitativas detalhadas, examinando exemplos específicos em que o modelo base e o modelo treinado divergem, bem como casos em que o modelo treinado acerta ou erra de forma inesperada, a fim de compreender melhor quais padrões de erro estão sendo capturados. Essas análises, combinadas com explorações adicionais de estratégias de treinamento e com a possível integração de novos benchmarks, devem contribuir para avançar a compreensão e a eficácia de modelos dedicados à detecção de alucinações em código gerado por LLMs.
+
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+\end{document}
