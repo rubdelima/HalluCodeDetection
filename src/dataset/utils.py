@@ -11,6 +11,7 @@ JSONL_OBJECT = TypeVar("JSONL_OBJECT")
 def load_jsonl(
     path: Path | str,
     return_type: type[JSONL_OBJECT],
+    quiet: bool = False
     ) -> list[JSONL_OBJECT]:
     path_ = Path(path) if isinstance(path, str) else path
     
@@ -33,6 +34,11 @@ def load_jsonl(
                         items.append(item)
                 except json.JSONDecodeError:
                     continue
+                except Exception as e:
+                    if not quiet:
+                        print(f"Error processing line: {line}")
+                        print(f"Error: {e}")
+                    raise e
 
     except FileNotFoundError:
         return []

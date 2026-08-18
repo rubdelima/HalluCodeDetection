@@ -39,6 +39,10 @@ MODEL_DISPLAY: dict[str, str] = {
     "gemma3:4b": "Gemma 3 4B",
     "gemma4:e4b": "Gemma 4 E4B",
     "gpt-oss:20b": "GPT-OSS 20B",
+    "google/gemma-3-4b-it": "Gemma 3 4B IT",
+    "data/trained_models/f2743b4e": "Best Trained Model",
+    "gemma-hallucination-qlora": "Gemma Hallucination QLoRA",
+    "merged_model": "Merged Model",
     "qwen2.5-coder:7b": "Qwen 2.5-Coder 7B",
     "qwen3.5:9b": "Qwen 3.5 9B",
 }
@@ -54,7 +58,7 @@ SPLIT_LABELS: dict[str, str] = {
 def load_jsonl(path: Path) -> list[dict]:
     """Carrega um arquivo JSONL ignorando linhas malformadas."""
     records = []
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -64,3 +68,16 @@ def load_jsonl(path: Path) -> list[dict]:
             except json.JSONDecodeError:
                 pass
     return records
+
+
+def model_key(record: dict) -> str:
+    """Retorna o identificador do modelo em arquivos antigos ou novos."""
+    return str(record.get("model_id") or record.get("model") or "")
+
+
+def slugify_model(model_id: str) -> str:
+    return (
+        model_id.replace("/", "_")
+        .replace(":", "_")
+        .replace(".", "_")
+    )

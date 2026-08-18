@@ -46,7 +46,12 @@ def build_level_list(base_path: Path, judge_path: Path, judge_model: str) -> lis
     return levels
 
 
-def stratified_split(levels: list[str], validation_size: float, test_size: float, seed: int) -> DatasetDict:
+def stratified_split(
+    levels: list[str],
+    validation_size: float,
+    test_size: float,
+    seed: int,
+) -> DatasetDict:
     ds = Dataset.from_list([{"level": lv} for lv in levels])
     ds = ds.map(lambda s: {"stratify_level": s["level"]}, batched=False)
     ds = ds.class_encode_column("stratify_level")

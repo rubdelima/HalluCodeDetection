@@ -11,7 +11,7 @@ class EvaluationConfig(BaseModel):
     
     @classmethod
     def from_config(cls, config: dict, models_options: Optional[Dict[str, ModelInfo]] = None) -> "EvaluationConfig":
-        models_options = get_models_options(config) if models_options is not None else {}
+        models_options = get_models_options(config) if models_options is None else models_options
         models_id = config.get("evaluation", {}).get("models", [])
         models = [model for model_id, model in models_options.items() if model_id in models_id]
         

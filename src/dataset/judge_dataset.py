@@ -134,7 +134,10 @@ def stratified_split(
 
 
 
-def load_hallucination_dataset(config: HalluCodeDetectionConfig)->DatasetDict:
+def load_hallucination_dataset(
+    config: HalluCodeDetectionConfig,
+    correct_size: float | None = None,
+)->DatasetDict:
     results_dir = Path(config.dataset_building_config.results_dir)
     base_path = results_dir / "dataset_base.json"
     judge_path = results_dir / "dataset_judge.jsonl"
@@ -167,7 +170,7 @@ def load_hallucination_dataset(config: HalluCodeDetectionConfig)->DatasetDict:
     records = apply_sampling(
         records=records, 
         dataset_load=config.dataset_config.load_size, 
-        correct_size=config.dataset_config.correct_size, 
+        correct_size=config.dataset_config.correct_size if correct_size is None else correct_size,
         seed=config.dataset_config.random_seed
     )
     

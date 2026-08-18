@@ -1,12 +1,13 @@
 """Gráficos de pizza: distribuição de classificação por modelo (dataset_base.json)."""
 
 from collections import defaultdict
+import math
 from pathlib import Path
 
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 
-from plot_shared import COLORS, LEVEL_LABELS, LEVEL_ORDER, MODEL_DISPLAY, OUT_DIR, load_jsonl
+from plot_shared import COLORS, LEVEL_LABELS, LEVEL_ORDER, MODEL_DISPLAY, OUT_DIR, load_jsonl, slugify_model
 
 DATA_PATH = Path("data/results/dataset_base.json")
 
@@ -34,6 +35,10 @@ def _draw_pie(ax: plt.Axes, model: str, counts: dict[str, int]) -> None:
     sizes = [counts.get(lv, 0) for lv in LEVEL_ORDER]
     colors = [COLORS[lv] for lv in LEVEL_ORDER]
     present = [(s, c) for s, c, _ in zip(sizes, colors, LEVEL_ORDER) if s > 0]
+    if not present:
+        ax.set_axis_off()
+        ax.set_title(f"{MODEL_DISPLAY.get(model, model)}\n(n = 0)", fontsize=12, fontweight="bold", pad=10)
+        return
     p_sizes, p_colors = zip(*present)
 
     ax.pie(
@@ -74,7 +79,7 @@ def plot_model(model: str, counts: dict[str, int], out_dir: Path) -> None:
 
     plt.tight_layout()
 
-    slug = model.replace(":", "_").replace(".", "_")
+    slug = slugify_model(model)
     out_path = out_dir / f"classification_{slug}.png"
     out_dir.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path, dpi=200, bbox_inches="tight")
@@ -84,10 +89,14 @@ def plot_model(model: str, counts: dict[str, int], out_dir: Path) -> None:
 
 def plot_grid(dist: dict[str, dict[str, int]], out_dir: Path) -> None:
     models = sorted(dist.keys())
-    fig, axes = plt.subplots(3, 2, figsize=(10, 15))
+    cols = 2
+    rows = math.ceil(len(models) / cols)
+    fig, axes = plt.subplots(rows, cols, figsize=(10, 5 * rows))
 
     for ax, model in zip(axes.flatten(), models):
         _draw_pie(ax, model, dist[model])
+    for ax in axes.flatten()[len(models):]:
+        ax.set_axis_off()
 
     legend_handles = [
         mpatches.Patch(color=COLORS[lv], label=LEVEL_LABELS[lv])
