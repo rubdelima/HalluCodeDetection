@@ -22,15 +22,15 @@ from src.dataset.judge_dataset import Record, load_hallucination_dataset
 def filter_records(
     model_info: ModelInfo,
     dataset_split: Dataset,
-    sumary_dict: Optional[dict[tuple[str, str, int], EvaluationSummaryRow]],
+    summary_dict: Optional[dict[tuple[str, str, int], EvaluationSummaryRow]],
     overwrite: bool = True
-    )->Tuple[List[Record], EvaluationResume]:
+    )->Tuple[List[Tuple[int, Record]], EvaluationResume]:
     evaluation_resume = EvaluationResume() #type:ignore
-    records : List[Record] = []
+    records : List[Tuple[int, Record]] = []
     
-    if overwrite or not sumary_dict:
+    if overwrite or not summary_dict:
         return [
-            Record(**dataset_split[idx]) for idx, sample in enumerate(dataset_split)], evaluation_resume
+            (idx, Record(**sample)) for idx, sample in enumerate(dataset_split)], evaluation_resume
     
     total_judges_responses = {
         "correct": 0,
@@ -40,18 +40,23 @@ def filter_records(
     }
     
     for idx, sample in enumerate(dataset_split):
-        evaluation_resume.total_responses += 1
         key = (model_info.id, model_info.type, idx)
         
-        if key in sumary_dict:
-            total_judges_responses[sumary_dict[key].predicted_level] += 1
+        if key in summary_dict:
+            evaluation_resume.total_responses += 1
+            predicted_level = summary_dict[key].predicted_level
+            if predicted_level:
+                total_judges_responses[predicted_level] += 1
             
-            judge_analysis = sumary_dict[key].judge_response.analysis
+            judge_analysis = summary_dict[key].judge_response.analysis
             if judge_analysis:
                 evaluation_resume.parsed_responses += 1
-                if sumary_dict[key].correct:
+                if summary_dict[key].correct:
                     evaluation_resume.overall_accuracy += 1
                     evaluation_resume.corrects_by_level[judge_analysis.level] += 1
+            continue
+
+        records.append((idx, Record(**sample)))
                     
     if evaluation_resume.total_responses > 0:
         evaluation_resume.overall_accuracy = evaluation_resume.overall_accuracy / evaluation_resume.total_responses
@@ -72,7 +77,7 @@ def evaluate_model(
     filtred, evaluation_resume = filter_records(
         model_info=model_info,
         dataset_split=dataset_split,
-        sumary_dict=summary_dict,
+        summary_dict=summary_dict,
         overwrite=overwrite
     )
     
@@ -90,12 +95,12 @@ def evaluate_model(
         )
 
         with progress:
-            for idx, sample in enumerate(filtred):
+            for progress_idx, (sample_index, sample) in enumerate(filtred):
                 update_evaluation_task(
                     progress,
                     task_id,
                     evaluation_resume,
-                    sample=f"sample {idx + 1}",
+                    sample=f"sample {progress_idx + 1}",
                 )
                 judge_response = model_handler.generate_judge(
                     example_prompt = sample.problem_description,
@@ -118,7 +123,7 @@ def evaluate_model(
                 evaluation = EvaluationSummaryRow(
                     model_id=model_info.id,
                     kind=model_info.type,
-                    sample_index=idx,
+                    sample_index=sample_index,
                     expected_level = sample.level, #type: ignore
                     correct = sample.level == predicted_level if predicted_level is not None else False,
                     predicted_level = predicted_level,
@@ -130,12 +135,12 @@ def evaluate_model(
                     progress,
                     task_id,
                     evaluation_resume,
-                    sample=f"sample {idx + 1}",
+                    sample=f"sample {progress_idx + 1}",
                     advance=1,
                 )
                 
-                if checkpoint and idx % checkpoint == 0:
-                    to_update.append(evaluation.model_dump())
+                to_update.append(evaluation.model_dump())
+                if checkpoint and (progress_idx + 1) % checkpoint == 0:
                     if file_save and to_update:
                         append_jsonl(file_save, to_update)
                         to_update = []
@@ -155,9 +160,12 @@ def evaluate_models(config: HalluCodeDetectionConfig) -> None:
     
     output_path = results_dir / "evaluation_results.jsonl"
     
-    split_raw = load_hallucination_dataset(config)
+    split_raw = load_hallucination_dataset(config, correct_size=1.0)
     
     test_dataset = split_raw["test"]
+    if len(test_dataset) == 0:
+        ui.console.print("[yellow]Skipping evaluation: test dataset is empty.[/]")
+        return
     
     summary = load_jsonl(output_path, EvaluationSummaryRow)
     summary_dict = {
@@ -166,10 +174,17 @@ def evaluate_models(config: HalluCodeDetectionConfig) -> None:
     
     SPLIT_SIZE = len(test_dataset)
     summary_rows: list[dict[str, object]] = []
+    if not config.evaluation_config.models:
+        ui.console.print("[yellow]Skipping evaluation: no evaluation models configured.[/]")
+        return
     
     for model_info in config.evaluation_config.models:
         
-        if len([item for item in summary if item.model_id == model_info.id]) == SPLIT_SIZE:
+        completed = len([
+            item for item in summary
+            if item.model_id == model_info.id and item.kind == model_info.type
+        ])
+        if not config.evaluation_config.overwrite and completed >= SPLIT_SIZE:
             ui.console.print(f"[yellow]Skipping {model_info.id}: evaluation already complete.[/]")
             continue
         
@@ -177,6 +192,7 @@ def evaluate_models(config: HalluCodeDetectionConfig) -> None:
             dataset_split=test_dataset,
             model_info=model_info,
             model_temperature=config.evaluation_config.model_temperature,
+            overwrite=config.evaluation_config.overwrite,
             checkpoint=config.evaluation_config.checkpoint_interval,
             file_save=output_path,
             summary_dict=summary_dict

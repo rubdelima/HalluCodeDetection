@@ -8,7 +8,6 @@ models:
       name: GPT-OSS 20B 
       size: 20
 
-
     - id: gemma3:4b
       name: Gemma 3 4B (QNT)
       size: 4
@@ -41,6 +40,11 @@ models:
     - id: merged_model
       name: Merged Model (QLoRA)
       size: 4
+    
+    - id: data/trained_models/f2743b4e
+      name: Best Trained Model (QLoRA)
+      size: 4
+
   
 dataset_building:
   dataset_load: 1.0
@@ -138,5 +142,6 @@ evaluation:
     - gemma4:e4b
     - qwen2.5-coder:7b
     - google/gemma-3-4b-it
-    - gemma-hallucination-qlora
-    - merged_model
+    # - gemma-hallucination-qlora
+    # - merged_model
+    - data/trained_models/f2743b4e

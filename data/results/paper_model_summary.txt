@@ -1,0 +1,6 @@
+Resumo automático para atualização do paper
+
+Modelos com avaliação completa: n = 145.
+Melhor acurácia total entre avaliações completas: Best Trained Model (QLoRA), 72.4% (105/145).
+Modelo base Gemma 3 4B IT (FP16): 58.6% (85/145) de acurácia total; 90.7% (78/86) em código correto; 13.0% (6/46) em erros funcionais; 9.1% (1/11) em erros de execução; 0.0% (0/2) em erros de sintaxe.
+Modelo treinado Best Trained Model (QLoRA): 72.4% (105/145) de acurácia total no subconjunto já avaliado.
