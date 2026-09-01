@@ -1,0 +1,35 @@
+# One-off retraining of the highest-validation-accuracy configuration observed
+# in the syntax-free balanced search. It has independent Optuna state so the
+# completed original trial does not prevent a fresh run.
+extends: config_phase3_balanced.yaml
+
+training:
+  search_strategy: optuna
+  random_seed: 42
+  max_trials: 1
+  optuna_startup_trials: 1
+  optuna_study_name: hallucination_detection_accuracy_retrain_713
+  # The model is intentionally selected by validation Accuracy for this run.
+  optuna_target: accuracy
+  classification_loss_strategy: label_weighted
+  classification_loss_weight: 3.0
+
+  models:
+    - google/gemma-4-E4B-it
+  use_qlora: [true]
+  lora_r: [16]
+  lora_alpha: [32]
+  lora_dropout: [0.1]
+  learning_rate: [1e-4]
+  bias: ["all"]
+  num_epochs: [4]
+  class_balance_enabled: true
+  exclude_syntax_from_training: true
+  class_balance_ratios:
+    - [1, 3, 3]
+
+  # Isolate this retained Accuracy candidate from the Macro-F1 search.
+  results_dir: /mnt/ssd/HalluCode/results/phase3_accuracy_retrain
+  model_output_dir: /mnt/ssd/HalluCode/models/phase3_accuracy_retrain
+  checkpoints_path: /mnt/ssd/HalluCode/checkpoints/phase3_accuracy_retrain
+  max_saved_models: 1

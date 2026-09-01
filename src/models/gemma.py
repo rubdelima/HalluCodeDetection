@@ -1,19 +1,18 @@
 from __future__ import annotations
 
 import torch
-from transformers import AutoModelForImageTextToText, AutoProcessor
 
 from src.models.base import BaseModelHandler, GenerateResult
+from src.models.loading import load_model, load_text_tokenizer
 
 class GemmaHandler(BaseModelHandler):
     def __init__(self, model: str) -> None:
         super().__init__(model)
         
         self.model = model
-        self.processor = AutoProcessor.from_pretrained(model)
-        self.model_instance = AutoModelForImageTextToText.from_pretrained(
-            model, device_map="auto"
-        ).eval()
+        self.tokenizer = load_text_tokenizer(model)
+        dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8 else torch.float16
+        self.model_instance = load_model(model, device_map="auto", dtype=dtype).eval()
         
 
     def close(self) -> None:
@@ -26,10 +25,10 @@ class GemmaHandler(BaseModelHandler):
         messages: list[dict[str, str]],
         temperature: float=0.0,
     ) -> GenerateResult:
-        inputs = self.processor.apply_chat_template(
+        inputs = self.tokenizer.apply_chat_template(
             messages, add_generation_prompt=True, tokenize=True,
             return_dict=True, return_tensors="pt"
-        ).to(self.model_instance.device, dtype=torch.bfloat16)
+        ).to(self.model_instance.device)
         
         input_len = inputs["input_ids"].shape[-1]
         
@@ -37,6 +36,6 @@ class GemmaHandler(BaseModelHandler):
             generation = self.model_instance.generate(**inputs, max_new_tokens=4096, do_sample=False, temperature=temperature)
             generation = generation[0][input_len:]
         
-        decoded = self.processor.decode(generation, skip_special_tokens=True)
+        decoded = self.tokenizer.decode(generation, skip_special_tokens=True)
         
         return GenerateResult(content=decoded) #type:ignore

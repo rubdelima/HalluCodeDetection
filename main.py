@@ -1,14 +1,24 @@
 from __future__ import annotations
 
+import faulthandler
+import traceback
+
+
 def main(args) -> None:
+    faulthandler.enable()
+
     from src.core import ui
     from src.constants import HalluCodeDetectionConfig
-    
+
     config = HalluCodeDetectionConfig(args.config)
 
     if args.build_dataset:
         from src.dataset.build import build_dataset
-        build_dataset(config.dataset_building_config)
+        try:
+            build_dataset(config.dataset_building_config)
+        except Exception:
+            traceback.print_exc()
+            raise
 
     if args.dataset_judge:
         from src.dataset.augmentation import dataset_judge
@@ -22,7 +32,7 @@ def main(args) -> None:
     if args.evaluate:
         with ui.console.status("Loading evaluation dependencies..."):
             from src.evaluations import evaluate_models
-        evaluate_models(config)
+        evaluate_models(config, retry=args.retry)
         return
         
     if any([args.build_dataset, args.dataset_judge, args.train_model, args.evaluate]):
@@ -70,4 +80,5 @@ if __name__ == "__main__":
     parser.add_argument("--model_name", type=str, default=None)
     parser.add_argument("--train_model", action="store_true")
     parser.add_argument("--evaluate", action="store_true")
+    parser.add_argument("--retry", action="store_true", help="Retry evaluation samples that previously failed instead of skipping them.")
     main(parser.parse_args())

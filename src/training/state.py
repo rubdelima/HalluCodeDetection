@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from src.constants.training import TrainingHyperparameters
+from src.constants.training import OPTUNA_TARGET, TrainingHyperparameters
 from src.dataset.utils import load_jsonl
 from src.schemas.training import TrainingResult
 
@@ -15,8 +15,27 @@ def hyperparameters_key(hyperparameters: TrainingHyperparameters) -> str:
     return json.dumps(base_hyperparameters.model_dump(mode="json"), sort_keys=True)
 
 
-def metric_for_search(result: TrainingResult) -> float:
-    return result.test_acc if result.test_acc is not None else result.val_acc
+def metric_for_search(result: TrainingResult, target: OPTUNA_TARGET = "accuracy") -> float | None:
+    """Return the configured validation metric, when it exists for this run."""
+    return {
+        "accuracy": result.val_acc,
+        "macro_f1": result.val_macro_f1,
+        "macro_recall": result.val_macro_recall,
+    }[target]
+
+
+def metric_ranking_key(
+    result: TrainingResult,
+    target: OPTUNA_TARGET = "accuracy",
+) -> tuple[float, float, float, float]:
+    """Rank by the target, then Macro F1, Macro Recall, and accuracy."""
+    primary = metric_for_search(result, target)
+    return (
+        primary if primary is not None else -1.0,
+        result.val_macro_f1 if result.val_macro_f1 is not None else -1.0,
+        result.val_macro_recall if result.val_macro_recall is not None else -1.0,
+        result.val_acc,
+    )
 
 
 def load_training_results(path: Path) -> list[TrainingResult]:
@@ -41,6 +60,7 @@ def build_training_status_rows(
     configured_hyperparameters: list[TrainingHyperparameters],
     results: list[TrainingResult],
     known_hyperparameters: list[TrainingHyperparameters] | None = None,
+    target: OPTUNA_TARGET = "accuracy",
 ) -> list[dict[str, object]]:
     result_by_key = latest_results_by_key(results)
     known_keys = {
@@ -70,7 +90,7 @@ def build_training_status_rows(
             }
         )
 
-    return sorted(rows, key=_status_sort_key)
+    return sorted(rows, key=lambda row: _status_sort_key(row, target))
 
 
 def display_hyperparameters_for_run(
@@ -94,10 +114,10 @@ def display_hyperparameters_for_run(
     return displayed
 
 
-def _status_sort_key(row: dict[str, object]) -> tuple[int, float, str]:
+def _status_sort_key(row: dict[str, object], target: OPTUNA_TARGET) -> tuple[int, float, str]:
     status = str(row.get("status", ""))
     result = row.get("result")
-    score = metric_for_search(result) if isinstance(result, TrainingResult) else -1.0
+    score = metric_for_search(result, target) if isinstance(result, TrainingResult) else -1.0
     hyperparameters = row.get("hyperparameters")
     model_id = (
         hyperparameters.model_name.id
@@ -105,4 +125,4 @@ def _status_sort_key(row: dict[str, object]) -> tuple[int, float, str]:
         else ""
     )
     status_rank = {"done": 0, "json-only": 0, "pending": 1}.get(status, 3)
-    return (status_rank, -score, model_id)
+    return (status_rank, -(score if score is not None else -1.0), model_id)

@@ -3,23 +3,20 @@ from __future__ import annotations
 import gc
 import time
 from pathlib import Path
-from typing import Optional
 from uuid import uuid4
 
 import torch
-from transformers import AutoModelForImageTextToText, AutoProcessor, BitsAndBytesConfig
+from transformers import BitsAndBytesConfig
 
 from src.constants import HalluCodeDetectionConfig
 from src.constants.models import ModelInfo
 from src.constants.training import TrainingHyperparameters
 from src.core import ui as core_ui
-from src.dataset.judge_dataset import build_dataset, select_records, stratified_split
-from src.dataset.utils import load_jsonl
+from src.dataset.judge_dataset import balance_training_split, load_hallucination_dataset
 from src.evaluations import evaluate_model
-from src.schemas.dataset import BaseResultRow, JudgeResultRow
 from src.schemas.training import TrainingResult
 from src.training.hyperparams import get_trainer
-from src.training.search import select_pending_hyperparameters
+from src.training.search import ask_next_trial, complete_trial, completed_trial_count, create_study, fail_trial
 from src.training.state import (
     build_training_status_rows,
     display_hyperparameters_for_run,
@@ -29,6 +26,7 @@ from src.training.state import (
 )
 from src.training.storage import apply_saved_model_policy, remove_model_dir, save_merged_model
 from src.training.ui import render_training_status_table
+from src.models.loading import load_model, load_text_tokenizer
 
 
 def train_model(
@@ -36,7 +34,7 @@ def train_model(
     merged_model_path: Path,
     hyperparameters: TrainingHyperparameters,
     dataset,
-) -> Optional[TrainingResult]:
+) -> TrainingResult:
     dtype = _training_dtype()
     quantization_config = _quantization_config(hyperparameters, dtype)
 
@@ -54,12 +52,12 @@ def train_model(
         _clear_memory()
 
         save_merged_model(
-            base_model_id=hyperparameters.model_name.id,
+            base_model_id=hyperparameters.model_name.local_path or hyperparameters.model_name.id,
             adapter_path=run_path,
             merged_model_path=merged_model_path,
             dtype=dtype,
         )
-        train_result, validation_result, test_result = _evaluate_trained_model(
+        validation_result = _evaluate_validation_model(
             dataset,
             hyperparameters,
             merged_model_path,
@@ -71,13 +69,12 @@ def train_model(
             model_path=str(merged_model_path),
             saved_model=True,
             training_time=training_time,
-            train_acc=train_result.overall_accuracy,
+            train_acc=None,
             val_acc=validation_result.overall_accuracy,
-            test_acc=test_result.overall_accuracy,
+            val_macro_f1=validation_result.macro_f1,
+            val_macro_recall=validation_result.macro_recall,
+            test_acc=None,
         )
-    except Exception as error:
-        core_ui.console.print(f"[red]Error training model {hyperparameters.model_name.id}: {error}[/]")
-        return None
     finally:
         _clear_training_locals(locals())
         _clear_memory()
@@ -90,36 +87,46 @@ def train_models(config: HalluCodeDetectionConfig) -> None:
 
     previous_results = load_training_results(paths["trained_models_path"])
     all_hyperparameters = config.training_config.hyperparameters
-    initial_selection = _select_next_candidates(config, all_hyperparameters, previous_results)
+    study = create_study(config.training_config, paths["optuna_storage_path"], previous_results)
 
-    _render_start_status(config, paths, all_hyperparameters, initial_selection, previous_results)
-    if not initial_selection:
-        core_ui.console.print("[yellow]No pending hyperparameters to train.[/]")
-        return
-
+    _render_start_status(config, paths, all_hyperparameters, previous_results, completed_trial_count(study))
     dataset = _load_training_dataset(config, paths["results_dir"])
     models_path = Path(config.training_config.models_path)
     models_path.mkdir(parents=True, exist_ok=True)
 
-    while True:
-        next_selection = _select_next_candidates(config, all_hyperparameters, previous_results)
-        if not next_selection:
+    while completed_trial_count(study) < config.training_config.max_trials:
+        next_trial = ask_next_trial(study, all_hyperparameters)
+        if next_trial is None:
             core_ui.console.print("[green]No pending hyperparameters left in the search space.[/]")
             break
+        trial, hyperparameters = next_trial
 
-        result = _train_next_candidate(
-            next_selection[0],
-            config,
-            dataset,
-            models_path,
-            paths["training_runs_path"],
-            previous_results,
-        )
-        if result is not None:
+        try:
+            result = _train_next_candidate(
+                hyperparameters,
+                config,
+                dataset,
+                models_path,
+                paths["training_runs_path"],
+                previous_results,
+            )
             previous_results.append(result)
             write_training_results(paths["trained_models_path"], previous_results)
+            complete_trial(trial, result, config.training_config.optuna_target)
+        except Exception as error:
+            core_ui.console.print(f"[red]Error training model {hyperparameters.model_name.id}: {error}[/]")
+            fail_trial(trial, error)
 
-        _render_status_table(next_selection, previous_results, all_hyperparameters)
+        _render_status_table(
+            [hyperparameters],
+            previous_results,
+            all_hyperparameters,
+            config.training_config.optuna_target,
+        )
+
+    core_ui.console.print(
+        f"[cyan]Optuna trials: {completed_trial_count(study)}/{config.training_config.max_trials}[/]"
+    )
 
 
 def _training_dtype() -> torch.dtype:
@@ -149,18 +156,21 @@ def _load_training_model(
     dtype: torch.dtype,
     quantization_config: BitsAndBytesConfig | None,
 ):
-    model = AutoModelForImageTextToText.from_pretrained(
-        hyperparameters.model_name.id,
+    model = load_model(
+        hyperparameters.model_name.local_path or hyperparameters.model_name.id,
         dtype=dtype,
         device_map="auto",
         quantization_config=quantization_config,
     )
+    # Required for gradient checkpointing and avoids retaining generation KV
+    # cache during supervised fine-tuning.
+    model.config.use_cache = False
 
-    processor = AutoProcessor.from_pretrained(hyperparameters.model_name.id)
-    return model, processor
+    tokenizer = load_text_tokenizer(hyperparameters.model_name.local_path or hyperparameters.model_name.id)
+    return model, tokenizer
 
 
-def _evaluate_trained_model(
+def _evaluate_validation_model(
     dataset,
     hyperparameters: TrainingHyperparameters,
     merged_model_path: Path,
@@ -172,43 +182,26 @@ def _evaluate_trained_model(
         size=hyperparameters.model_name.size,
         quantization="4-bit" if hyperparameters.use_qlora else None,
     )
-    results = []
-    for split_name in ("train", "validation", "test"):
-        result = evaluate_model(dataset_split=dataset[split_name], model_info=model_info)
-        results.append(result)
-
-    return tuple(results)
+    return evaluate_model(dataset_split=dataset["validation"], model_info=model_info)
 
 
 def _training_paths(config: HalluCodeDetectionConfig) -> dict[str, Path]:
-    results_dir = Path(config.dataset_building_config.results_dir)
+    results_dir = Path(config.training_config.results_dir or config.dataset_building_config.results_dir)
+    checkpoints_path = config.training_config.checkpoints_path
     return {
         "results_dir": results_dir,
         "trained_models_path": results_dir / "trained_models.jsonl",
-        "training_runs_path": results_dir / "training_runs",
+        "training_runs_path": Path(checkpoints_path) if checkpoints_path else results_dir / "training_runs",
+        "optuna_storage_path": results_dir / "optuna_trials.db",
     }
-
-
-def _select_next_candidates(
-    config: HalluCodeDetectionConfig,
-    all_hyperparameters: list[TrainingHyperparameters],
-    previous_results: list[TrainingResult],
-) -> list[TrainingHyperparameters]:
-    limit = 1 if config.training_config.search_strategy == "bayesian" else None
-    return select_pending_hyperparameters(
-        all_hyperparameters,
-        previous_results,
-        config.training_config,
-        limit=limit,
-    )
 
 
 def _render_start_status(
     config: HalluCodeDetectionConfig,
     paths: dict[str, Path],
     all_hyperparameters: list[TrainingHyperparameters],
-    initial_selection: list[TrainingHyperparameters],
     previous_results: list[TrainingResult],
+    trial_count: int,
 ) -> None:
     configured_keys = {hyperparameters_key(hyperparameters) for hyperparameters in all_hyperparameters}
     json_only = len(
@@ -222,22 +215,22 @@ def _render_start_status(
         "[cyan]"
         f"Search: {config.training_config.search_strategy} | "
         f"space={len(all_hyperparameters)} | "
-        f"next={len(initial_selection)} | "
-        f"executed={len(previous_results)} | "
+        "next=Optuna TPE | "
+        f"executed={trial_count} | "
         f"json-only={json_only}"
         "[/]"
     )
-    _render_status_table(initial_selection, previous_results, all_hyperparameters)
-    if initial_selection:
-        core_ui.console.print("[cyan]Bayesian search will pick the next candidate after each result.[/]")
+    core_ui.console.print(
+        f"[cyan]Optuna TPE: validation target={config.training_config.optuna_target}; "
+        f"limit={config.training_config.max_trials}.[/]"
+    )
 
 
 def _load_training_dataset(config: HalluCodeDetectionConfig, results_dir: Path):
-    base_results = load_jsonl(results_dir / "dataset_base.json", BaseResultRow)
-    judge_results = load_jsonl(results_dir / "dataset_judge.jsonl", JudgeResultRow)
-    records = select_records(base_results, judge_results)
-    dataset = build_dataset(records)
-    return stratified_split(dataset, validation_size=0.1, test_size=0.2, seed=42)
+    # Use exactly the same sampling and split policy as evaluation.  In
+    # particular, never let records for one benchmark task cross a split.
+    del results_dir
+    return load_hallucination_dataset(config)
 
 
 def _train_next_candidate(
@@ -247,21 +240,32 @@ def _train_next_candidate(
     models_path: Path,
     training_runs_path: Path,
     previous_results: list[TrainingResult],
-) -> TrainingResult | None:
+) -> TrainingResult:
     run_id = uuid4().hex[:8]
     run_path = training_runs_path / run_id
     merged_model_path = models_path / run_id
 
-    result = train_model(run_path, merged_model_path, hyperparameters, dataset)
-    if result is None:
+    candidate_dataset = dataset
+    if config.training_config.class_balance_enabled:
+        candidate_dataset = balance_training_split(
+            dataset=dataset,
+            ratio=hyperparameters.class_balance_ratio,
+            exclude_syntax=config.training_config.exclude_syntax_from_training,
+            seed=config.training_config.random_seed,
+        )
+
+    try:
+        result = train_model(run_path, merged_model_path, hyperparameters, candidate_dataset)
+    except Exception:
         remove_model_dir(str(run_path))
         remove_model_dir(str(merged_model_path))
-        return None
+        raise
 
     result = apply_saved_model_policy(
         result=result,
         results=previous_results,
         max_saved_models=config.training_config.max_saved_models,
+        target=config.training_config.optuna_target,
     )
     remove_model_dir(str(run_path))
     return result
@@ -271,6 +275,7 @@ def _render_status_table(
     selected_hyperparameters: list[TrainingHyperparameters],
     previous_results: list[TrainingResult],
     all_hyperparameters: list[TrainingHyperparameters],
+    target,
 ) -> None:
     core_ui.console.print(
         render_training_status_table(
@@ -278,6 +283,7 @@ def _render_status_table(
                 display_hyperparameters_for_run(selected_hyperparameters, previous_results),
                 previous_results,
                 known_hyperparameters=all_hyperparameters,
+                target=target,
             )
         )
     )

@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.schemas.dataset import BaseResultRow, JudgeResultRow
-from src.dataset.judge_dataset import select_records, build_dataset, stratified_split
+from src.dataset.judge_dataset import select_records, build_dataset, grouped_split
 from src.dataset.utils import load_jsonl
 
 OUT_PATH = Path("data/results/pylint_results.jsonl")
@@ -132,7 +132,7 @@ def main() -> None:
     judge_results = load_jsonl("data/results/dataset_judge.jsonl", JudgeResultRow)
     records_raw = select_records(base_results, judge_results)
     dataset = build_dataset(records_raw)
-    dataset = stratified_split(dataset, validation_size=0.1, test_size=0.2, seed=42)
+    dataset = grouped_split(dataset, validation_size=0.1, test_size=0.2, seed=42)
     test = dataset["test"]
     print(f"Test split: {len(test)} amostras")
 

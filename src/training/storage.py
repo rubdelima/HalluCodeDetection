@@ -6,9 +6,10 @@ from pathlib import Path
 
 import torch
 from peft import PeftModel
-from transformers import AutoModelForImageTextToText, AutoProcessor
 
+from src.models.loading import load_model, load_text_tokenizer
 from src.schemas.training import TrainingResult
+from src.training.state import metric_ranking_key
 
 
 def remove_model_dir(path: str | None) -> None:
@@ -32,7 +33,7 @@ def save_merged_model(
     merged_model = None
     processor = None
     try:
-        base_model = AutoModelForImageTextToText.from_pretrained(
+        base_model = load_model(
             base_model_id,
             dtype=dtype,
             low_cpu_mem_usage=True,
@@ -45,7 +46,7 @@ def save_merged_model(
             max_shard_size="1GB",
         )
 
-        processor = AutoProcessor.from_pretrained(str(adapter_path))
+        processor = load_text_tokenizer(str(adapter_path))
         processor.save_pretrained(merged_model_path)
     finally:
         del processor
@@ -61,6 +62,7 @@ def apply_saved_model_policy(
     result: TrainingResult,
     results: list[TrainingResult],
     max_saved_models: int,
+    target: str = "accuracy",
 ) -> TrainingResult:
     if max_saved_models <= 0:
         remove_model_dir(result.model_path)
@@ -71,11 +73,17 @@ def apply_saved_model_policy(
     saved_results = [
         item
         for item in results
-        if item.saved_model and item.model_path and Path(item.model_path).exists()
+        if (
+            item.saved_model
+            and item.model_path
+            and Path(item.model_path).exists()
+            # Do not evict models from another experiment/output directory.
+            and Path(item.model_path).parent == Path(result.model_path).parent
+        )
     ]
     ranked_results = sorted(
         [*saved_results, result],
-        key=lambda item: item.test_acc,
+        key=lambda item: metric_ranking_key(item, target),  # type: ignore[arg-type]
         reverse=True,
     )
     keep_ids = {id(item) for item in ranked_results[:max_saved_models]}

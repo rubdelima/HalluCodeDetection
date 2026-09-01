@@ -6,7 +6,7 @@ from src.constants.models import ModelInfo, get_models_options
 
 def get_model_handler(model: ModelInfo) -> BaseModelHandler:
     if model.type == "ollama":
-        return OllamaHandler(model.id)
+        return OllamaHandler(model.id, num_ctx=model.num_ctx, think=model.think)
     elif model.type == "gemma":
-        return GemmaHandler(model.id)
+        return GemmaHandler(model.local_path or model.id)
     raise ValueError(f"Unsupported model type: {model.type}")

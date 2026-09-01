@@ -115,7 +115,7 @@ def interactive_menu(options: Mapping[str, str]) -> str:
 
 
 def format_pass_at_1(counts: dict[str, int]) -> str:
-    total = sum(counts.values())
+    total = counts.get("total", sum(counts.values()))
     if total == 0:
         return "0.0%"
     return f"{(counts['correct'] / total) * 100:.1f}%"
@@ -134,9 +134,9 @@ def render_status_table(model_counts: dict[str, dict[str, int]]) -> Table:
         table.add_row(
             model,
             str(counts["correct"]),
-            str(counts["functional_error"]),
-            str(counts["runtime_error"]),
-            str(counts["syntax_error"]),
+            str(counts["functional"]),
+            str(counts["runtime"]),
+            str(counts["syntax"]),
             format_pass_at_1(counts),
         )
     return table
@@ -165,9 +165,9 @@ def build_progress(total: int, counts: dict[str, int]) -> tuple[Progress, TaskID
         bench="-",
         bench_id="-",
         c=counts["correct"],
-        f=counts["functional_error"],
-        r=counts["runtime_error"],
-        s=counts["syntax_error"],
+        f=counts["functional"],
+        r=counts["runtime"],
+        s=counts["syntax"],
     )
     return progress, task_id
 

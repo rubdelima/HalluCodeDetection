@@ -8,6 +8,8 @@ class EvaluationConfig(BaseModel):
     models: List[ModelInfo] = Field(..., description="List of model configurations to evaluate.")
     model_temperature: float = Field(0.0, description="Temperature to use for judge model generation.")
     overwrite: bool = Field(False, description="Whether to overwrite existing evaluation results.")
+    num_ctx: int | None = Field(None, description="Maximum context window size applied to Ollama models during evaluation.")
+    think: bool | None = Field(None, description="Whether to enable the reasoning/thinking mode for Ollama models during evaluation.")
     
     @classmethod
     def from_config(cls, config: dict, models_options: Optional[Dict[str, ModelInfo]] = None) -> "EvaluationConfig":
@@ -20,4 +22,6 @@ class EvaluationConfig(BaseModel):
             models=models,
             model_temperature=config.get("evaluation", {}).get("model_temperature", 0.0),
             overwrite=config.get("evaluation", {}).get("overwrite", False),
+            num_ctx=config.get("evaluation", {}).get("num_ctx"),
+            think=config.get("evaluation", {}).get("think"),
         )

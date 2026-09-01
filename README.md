@@ -56,12 +56,24 @@ uv run main.py --dataset_judge
 
 Phase 3 - Model Training
 - Trains a LoRA adapter to improve hallucination detection using the judged dataset.
+- Uses Optuna's TPE sampler and maximizes validation accuracy only; the test split is not used to choose hyperparameters.
+- Trial state, metrics, and failures are persisted in `results_dir/optuna_trials.db`; rerunning the command resumes the same study.
+- `training.max_trials` is a total budget (completed plus failed trials), including trials from prior runs.
 
 Run Phase 3:
 
 ```bash
 uv run main.py --train_model
 ```
+
+To pre-download all configured training checkpoints and reset a study
+containing only failed/interrupted trials:
+
+```bash
+./scripts/prepare_phase3.sh --reset-search
+```
+
+Append `--train` to begin Phase 3 in the same environment.
 
 Phase 4 - Evaluation
 - Compares base models vs fine-tuned models.
@@ -85,6 +97,7 @@ Edit `config.yaml` to control:
 - test timeout (`tests_timeout`)
 - checkpoint interval (`checkpoint_interval`)
 - results directory (`results_dir`)
+- Optuna trial budget (`training.max_trials`) and startup trials (`training.optuna_startup_trials`)
 
 Interactive Menu
 ----------------

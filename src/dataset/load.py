@@ -1,23 +1,45 @@
-from datasets import load_dataset
-from typing import Iterable, List
+from __future__ import annotations
 
 import math
 import random
+from typing import Iterable, TypeVar
 
-from src.schemas.mbpp import MBPPExample
+from evalplus.data import get_human_eval_plus, get_mbpp_plus
 
-def load_mbpp_split(split: str) -> List[MBPPExample]:
-    dataset = load_dataset("mbpp", "sanitized")
-    split = dataset.get(split)
-    if not split:
-        raise ValueError(f"Split '{split}' not found in the dataset.")
-    return [MBPPExample.from_dataset(example) for example in split]
+from src.schemas.evalplus import EvalPlusExample
+
+T = TypeVar("T")
+
+EVALPLUS_LOADERS = {
+    "humaneval": get_human_eval_plus,
+    "mbpp": get_mbpp_plus,
+}
+
+
+def load_evalplus(benchmark_name: str) -> list[EvalPlusExample]:
+    loader = EVALPLUS_LOADERS.get(benchmark_name)
+    if loader is None:
+        raise ValueError(f"Unsupported EvalPlus dataset: {benchmark_name}")
+    dataset = loader()
+    return [
+        EvalPlusExample.from_evalplus(benchmark_name, task_id, problem)
+        for task_id, problem in dataset.items()
+    ]
+
+
+def load_all_examples(benchmarks: Iterable[str]) -> dict[tuple[str, int], EvalPlusExample]:
+    by_key: dict[tuple[str, int], EvalPlusExample] = {}
+    for benchmark in benchmarks:
+        for example in load_evalplus(benchmark):
+            by_key[(example.benchmark_name, example.benchmark_id)] = example
+    return by_key
+
 
 def sample_examples(
-    examples: Iterable[MBPPExample],
+    examples: Iterable[T],
     fraction: float,
     seed: int | None = None,
-) -> List[MBPPExample]:
+) -> list[T]:
     if not 0 < fraction <= 1:
         raise ValueError("fraction must be in (0, 1]")
     examples_list = list(examples)

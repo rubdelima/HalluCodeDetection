@@ -3,7 +3,7 @@ from typing import TypeVar, cast, List
 from pathlib import Path
 from datasets import Dataset
 from src.schemas.dataset import BaseResultRow, JudgeResultRow
-from src.schemas.mbpp import MBPPExample
+from src.schemas.evalplus import EvalPlusExample
 from src.models.prompts import analyse_hallucination_prompt, get_target_response
 
 JSONL_OBJECT = TypeVar("JSONL_OBJECT")
@@ -54,7 +54,7 @@ def append_jsonl(path: Path | str, items: List[dict[str, object]]) -> None:
             handle.write(json_line + "\n")
 
 def get_pending_tasks(
-    mbpp_by_id: dict[int,MBPPExample],
+    examples_by_key: dict[tuple[str, int], EvalPlusExample],
     existing : List[JudgeResultRow], 
     base_results : List[BaseResultRow], 
     judge_model: str
@@ -80,7 +80,7 @@ def get_pending_tasks(
         bench_id = base_item.benchmark_id
         if bench_id is None:
             continue
-        if bench_id not in mbpp_by_id:
+        if (base_item.benchmark, bench_id) not in examples_by_key:
             continue
         key = (
             base_item.benchmark,
@@ -98,8 +98,8 @@ def get_pending_tasks(
 def create_conversation(
     problem_description: str,
     generated_code: str,
-    level: str,
-    explanation: str,
+    levels: list[str],
+    explanations: list,
 ) -> dict[str, list[dict[str, str]]]:
     return {
         "messages": [
@@ -110,7 +110,7 @@ def create_conversation(
                 ),
             },
             {"role": "user", "content": generated_code},
-            {"role": "assistant", "content": get_target_response(level, explanation)},
+            {"role": "assistant", "content": get_target_response(levels, explanations)},
         ]
     }
 
@@ -119,8 +119,8 @@ def to_conversation(dataset: Dataset) -> Dataset:
         lambda sample: create_conversation(
             sample["problem_description"],
             sample["generated_code"],
-            sample["level"],
-            sample["explanation"],
+            sample["levels"],
+            sample["explanations"],
         ),
         remove_columns=dataset.column_names,
         batched=False,

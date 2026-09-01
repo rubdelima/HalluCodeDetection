@@ -5,33 +5,77 @@ ui:
 models:
   ollama:
     - id: gpt-oss:20b
-      name: GPT-OSS 20B 
+      name: GPT-OSS 20B
       size: 20
 
     - id: gemma3:4b
       name: Gemma 3 4B (QNT)
       size: 4
-    
+
     - id: qwen2.5-coder:7b
       name: Qwen 2.5 Coder 7B (QNT)
       size: 7
-    
-    - id: qwen3.5:9b
-      name: Qwen 3.5 9B (QNT)
-      size: 9
-    
-    - id: gemma3:1b
-      name: Gemma 3 1B (QNT)
-      size: 1
-    
+
+    - id: gemma4:31b
+      name: Gemma 4 31B
+      size: 31
+
+    - id: gemma4:e2b
+      name: Gemma 4 E2B (Ollama)
+      size: 2
+
     - id: gemma4:e4b
-      name: Gemma 4 E4B (QNT)
-      size: 8
-  
+      name: Gemma 4 E4B (Ollama)
+      size: 4
+
+    - id: muse-glimmer:30b
+      name: Muse Glimmer 30B
+      size: 30
+
+    - id: qwen3.8:27b
+      name: Qwen 3.8 27B
+      size: 27
+
+    - id: devstral-small-2:24b
+      name: Devstral Small 2 24B
+      size: 24
+    
+    - id: qwen2.5-coder:32b
+      name: Qwen 2.5 Coder 32B
+      size: 32
+
+    - id : qwen3-coder:30b
+      name: Qwen 3 Coder 30B
+      size: 30
+    
+    - id: glm-4.7-flash:latest
+      name: GLM 4.7 Flash
+      size: 30
+    
+    - id: ornith-1.5:35b
+      name: Ornith 1.5 35B
+      size: 35
+
   gemma:
     - id: google/gemma-3-4b-it
       name: Gemma 3 4B IT (FP16)
       size: 4
+      local_path: /mnt/ssd/HalluCode/hf-models/google--gemma-3-4b-it
+
+    - id: google/gemma-4-E2B-it
+      name: Gemma 4 E2B IT (FP16)
+      size: 2
+      local_path: /mnt/ssd/HalluCode/hf-models/google--gemma-4-E2B-it
+
+    - id: google/gemma-4-E4B-it
+      name: Gemma 4 E4B IT (FP16)
+      size: 4
+      local_path: /mnt/ssd/HalluCode/hf-models/google--gemma-4-E4B-it
+
+    - id: trained/gemma-4-e4b-best
+      name: Gemma 4 E4B Best Fine-Tuned
+      size: 4
+      local_path: /mnt/ssd/HalluCode/models/8a59793f
     
     - id: gemma-hallucination-qlora
       name: Gemma Hallucination QLoRA
@@ -50,24 +94,46 @@ dataset_building:
   dataset_load: 1.0
 
   dataset_base:
+    - humaneval
     - mbpp
   
   spinner_length: 600
 
   model_temperature: 1.0
 
+  judge_temperature: 0.0
+
   models:
     - gpt-oss:20b
     - gemma3:4b
     - qwen2.5-coder:7b
-    # - deepseek-code:6.7b
-    - qwen3.5:9b
-    - gemma3:1b
-    # - starcoder2:3b
-    # - starcoder2:15b
-    - gemma4:e4b
+    - gemma4:31b
+    - muse-glimmer:30b
+    - qwen3.8:27b
+    - devstral-small-2:24b
+    - qwen2.5-coder:32b
+    - qwen3-coder:30b
+    - glm-4.7-flash:latest
+    - ornith-1.5:35b
   
-  judge_model: gpt-oss:20b
+  judge_models:
+    #- id: gpt-oss:20b
+    #  num_ctx: 8192
+    #  think: false
+    # - id: gemma4:31b
+    #   num_ctx: 8192
+    #   think: false
+
+    - id: muse-glimmer:30b
+      num_ctx: 16384
+      think: false
+    - id: qwen3.8:27b
+      num_ctx: 16384
+      think: false
+    - id: ornith-1.5:35b
+      num_ctx: 16384
+      think: false
+
 
   tests_timeout: 30
 
@@ -75,7 +141,9 @@ dataset_building:
   
   overwrite_results: false
   
-  results_dir: ./data/results/
+  results_dir: ./data/results/evalplus/
+
+  judge_results_dir: ./data/results/evalplus/judge/
 
 dataset:
   # dataset_load: fraction of the judged dataset to use (0-1).
@@ -88,22 +156,32 @@ dataset:
   random_seed: 42
   # test_size: fraction reserved for evaluation split (0-1).
   # recomendado: 0.1-0.2.
-  validation_size: 0.1
+  validation_size: 0.15
   test_size: 0.2
 
 training:
-  # search_strategy: grid | random | bayesian.
-  # bayesian usa os resultados em results_dir/trained_models.jsonl para escolher proximos candidatos.
-  search_strategy: bayesian
+  # Busca TPE do Optuna, persistida em results_dir/optuna_trials.db.
+  search_strategy: optuna
   random_seed: 42
-  bayesian_random_starts: 5
-  bayesian_good_quantile: 0.35
-  bayesian_candidates: 128
+  # Total de configurações treinadas ou que falharam; a execução pode ser retomada.
+  max_trials: 10
+  # Número de tentativas aleatórias antes de o TPE usar os resultados observados.
+  optuna_startup_trials: 5
+  # Use a distinct study when changing target or loss strategy; historical
+  # accuracy-only trials do not contain Macro F1/Recall.
+  optuna_study_name: hallucination_detection_macro_f1_weighted
+  # Primary Optuna metric: accuracy, macro_f1, or macro_recall.
+  optuna_target: macro_f1
+  # standard = ordinary SFT token loss; label_weighted emphasizes class labels.
+  classification_loss_strategy: label_weighted
+  classification_loss_weight: 3.0
 
   # model: Hugging Face model id used for SFT.
   # recomendado: google/gemma-3-4b-it ou google/gemma-3-1b-it.
   models: 
     - google/gemma-3-4b-it
+    - google/gemma-4-E2B-it
+    - google/gemma-4-E4B-it
 
   # use_qlora: list of booleans for grid search.
   # true = 4-bit QLoRA, false = LoRA full precision.
@@ -122,11 +200,15 @@ training:
   # recomendado: [5e-5, 2e-5, 1e-4].
   learning_rate: [5e-5, 1e-4]
   bias : ["none", "all", "lora_only"]
-  num_epochs : [3,4,5]
+  num_epochs : [3,4]
   
 
-  # model_output_dir: root folder to store each trained run.
-  model_output_dir: data/trained_models/
+  # Modelos mesclados mantidos após a seleção por validação.
+  # Separate directory so this weighted experiment cannot evict the prior
+  # accuracy-only retained models.
+  model_output_dir: /mnt/ssd/HalluCode/models/macro_f1_weighted
+  # Checkpoints temporários do Trainer (removidos ao final de cada trial).
+  checkpoints_path: /mnt/ssd/HalluCode/checkpoints/macro_f1_weighted
 
   # max_salved_models: maximum number of saved models kept on disk.
   max_salved_models: 5
@@ -135,13 +217,21 @@ evaluation:
   checkpoint_interval: 10
   model_temperature: 0.0
   overwrite : false
+  num_ctx: 16384
+  think: false
   models:
     - gpt-oss:20b
     - gemma3:4b
-    - gemma3:1b
-    - gemma4:e4b
     - qwen2.5-coder:7b
+    - gemma4:31b
+    - muse-glimmer:30b
+    - qwen3.8:27b
+    - devstral-small-2:24b
+    - qwen2.5-coder:32b
+    - qwen3-coder:30b
+    - glm-4.7-flash:latest
+    - ornith-1.5:35b
     - google/gemma-3-4b-it
-    # - gemma-hallucination-qlora
-    # - merged_model
-    - data/trained_models/f2743b4e
+    - google/gemma-4-E2B-it
+    - google/gemma-4-E4B-it
+    - trained/gemma-4-e4b-best

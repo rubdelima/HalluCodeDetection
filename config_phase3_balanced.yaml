@@ -1,0 +1,111 @@
+# Phase 3 variant: syntax-free, class-balanced supervised fine-tuning.
+# This file inherits model definitions and dataset locations from config.yaml.
+extends: config.yaml
+
+dataset:
+  # Keep every correct sample available before the training-only balancing step.
+  load_size: 1.0
+  correct_size: 1.0
+  random_seed: 42
+  validation_size: 0.15
+  test_size: 0.2
+
+training:
+  search_strategy: optuna
+  random_seed: 42
+  max_trials: 30
+  optuna_startup_trials: 9
+  optuna_study_name: hallucination_detection_macro_f1_balanced_no_syntax
+  optuna_target: macro_f1
+  classification_loss_strategy: label_weighted
+  classification_loss_weight: 3.0
+
+  # Training-only sampling. Ratios are runtime:functional:correct.
+  # Syntax-labelled records are excluded before downsampling; no rows are duplicated.
+  class_balance_enabled: true
+  exclude_syntax_from_training: true
+  class_balance_ratios:
+    - [1, 1, 1]
+    - [1, 3, 3]
+
+  # Only the best base model from the previous searches is retrained.
+  models:
+    - google/gemma-4-E4B-it
+  use_qlora: [true]
+  lora_r: [8, 16, 32]
+  lora_alpha: [8, 16, 32]
+  lora_dropout: [0.05, 0.1]
+  learning_rate: [5e-5, 1e-4]
+  bias: ["none", "all", "lora_only"]
+  num_epochs: [3, 4]
+
+  # Isolated artifacts: this experiment cannot resume, overwrite, or evict
+  # models, checkpoints, Optuna trials, or JSONL results from prior searches.
+  results_dir: /mnt/ssd/HalluCode/results/phase3_balanced_no_syntax
+  model_output_dir: /mnt/ssd/HalluCode/models/phase3_balanced_no_syntax
+  checkpoints_path: /mnt/ssd/HalluCode/checkpoints/phase3_balanced_no_syntax
+  # Retain only the best completed run by Macro F1 in this search.
+  max_saved_models: 1
+
+# Re-declare the inherited Gemma models and add the best weighted-search
+# artifact so it can be evaluated by its stable model ID.
+models:
+  gemma:
+    - id: google/gemma-3-4b-it
+      name: Gemma 3 4B IT (FP16)
+      size: 4
+      local_path: /mnt/ssd/HalluCode/hf-models/google--gemma-3-4b-it
+    - id: google/gemma-4-E2B-it
+      name: Gemma 4 E2B IT (FP16)
+      size: 2
+      local_path: /mnt/ssd/HalluCode/hf-models/google--gemma-4-E2B-it
+    - id: google/gemma-4-E4B-it
+      name: Gemma 4 E4B IT (FP16)
+      size: 4
+      local_path: /mnt/ssd/HalluCode/hf-models/google--gemma-4-E4B-it
+    - id: trained/gemma-4-e4b-best
+      name: Gemma 4 E4B Best Fine-Tuned (Accuracy)
+      size: 4
+      local_path: /mnt/ssd/HalluCode/models/8a59793f
+    - id: trained/gemma-4-e4b-weighted-macro-f1-best
+      name: Gemma 4 E4B Best Fine-Tuned (Weighted Macro F1)
+      size: 4
+      local_path: /mnt/ssd/HalluCode/models/macro_f1_weighted/1c41671b
+    - id: trained/gemma-4-e4b-balanced-macro-f1-best
+      name: Gemma 4 E4B Best Fine-Tuned (Balanced Macro F1)
+      size: 4
+      local_path: /mnt/ssd/HalluCode/models/phase3_balanced_no_syntax/8e34f894
+    - id: trained/gemma-4-e4b-balanced-accuracy-retrained
+      name: Gemma 4 E4B Fine-Tuned (Balanced Accuracy Retrain)
+      size: 4
+      local_path: /mnt/ssd/HalluCode/models/phase3_accuracy_retrain/c0c9e44c
+    - id: gemma-hallucination-qlora
+      name: Gemma Hallucination QLoRA
+      size: 4
+    - id: merged_model
+      name: Merged Model (QLoRA)
+      size: 4
+    - id: data/trained_models/f2743b4e
+      name: Best Trained Model (QLoRA)
+      size: 4
+
+evaluation:
+  models:
+    - gpt-oss:20b
+    - gemma3:4b
+    - qwen2.5-coder:7b
+    - gemma4:31b
+    - muse-glimmer:30b
+    - qwen3.8:27b
+    - devstral-small-2:24b
+    - qwen2.5-coder:32b
+    - qwen3-coder:30b
+    - glm-4.7-flash:latest
+    - ornith-1.5:35b
+    - google/gemma-3-4b-it
+    - google/gemma-4-E2B-it
+    - google/gemma-4-E4B-it
+    - trained/gemma-4-e4b-best
+    - trained/gemma-4-e4b-weighted-macro-f1-best
+    - trained/gemma-4-e4b-balanced-macro-f1-best
+    - trained/gemma-4-e4b-balanced-accuracy-retrained

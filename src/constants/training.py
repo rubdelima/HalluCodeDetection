@@ -5,7 +5,10 @@ from src.constants.models import ModelInfo, get_models_options
 from itertools import product
 
 BIAS_OPTIONS = Literal["none", "all", "lora_only"]
-SEARCH_STRATEGY = Literal["grid", "random", "bayesian"]
+SEARCH_STRATEGY = Literal["optuna"]
+OPTUNA_TARGET = Literal["accuracy", "macro_f1", "macro_recall"]
+CLASSIFICATION_LOSS_STRATEGY = Literal["standard", "label_weighted"]
+ClassBalanceRatio = tuple[int, int, int]
 
 class TrainingHyperparameters(BaseModel):
     model_name: ModelInfo = Field(..., description="Model configuration to use for training.")
@@ -17,16 +20,49 @@ class TrainingHyperparameters(BaseModel):
     num_epochs : int = Field(..., description="Number of epochs to train for.")
     bias : BIAS_OPTIONS = Field("none", description="Which parameters to apply LoRA to. Options: 'none' (only weight matrices), 'all' (all parameters), 'lora_only' (only parameters in the LoRA adapter).")
     optimizer: str = Field("adamw_torch_fused", description="Optimizer to use for training. Options: 'adamw_torch_fused', 'adamw_torch', 'adamw_apex_fused', 'adamw_apex', 'adamw_hf_fused', 'adamw_hf', 'c' (for 4-bit QLoRA).")
+    classification_loss_strategy: CLASSIFICATION_LOSS_STRATEGY = Field("standard", description="Loss strategy used for this run.")
+    classification_loss_weight: float = Field(3.0, ge=1.0, description="Class-token weight for label_weighted loss.")
+    class_balance_ratio: ClassBalanceRatio = Field(
+        (1, 1, 1),
+        description="Target runtime:functional:correct ratio used only to sample the training split.",
+    )
     
 class TrainingConfig(BaseModel):
     hyperparameters : List[TrainingHyperparameters] = Field(..., description="List of training hyperparameter configurations to use for training")
     models_path : str = Field("models", description="Path to save trained models.")
+    checkpoints_path: str | None = Field(None, description="Path for temporary Trainer checkpoints; defaults to results_dir/training_runs.")
     max_saved_models : int = Field(5, description="Maximum number of trained models to save.")
-    search_strategy: SEARCH_STRATEGY = Field("grid", description="Hyperparameter search strategy: grid, random, or bayesian.")
-    random_seed: int = Field(42, description="Seed used by random and bayesian search.")
-    bayesian_random_starts: int = Field(5, description="Number of random observations before bayesian sampling starts.")
-    bayesian_good_quantile: float = Field(0.35, description="Fraction of best observations used by the bayesian sampler.")
-    bayesian_candidates: int = Field(128, description="Number of candidate configurations scored at each bayesian selection step.")
+    search_strategy: SEARCH_STRATEGY = Field("optuna", description="Persistent Optuna TPE search strategy.")
+    random_seed: int = Field(42, description="Seed used by the Optuna sampler.")
+    max_trials: int = Field(40, gt=0, description="Maximum number of completed or failed Optuna trials.")
+    optuna_startup_trials: int = Field(10, ge=0, description="Random Optuna trials before TPE sampling starts.")
+    optuna_study_name: str = Field("hallucination_detection", min_length=1, description="Persistent Optuna study name.")
+    optuna_target: OPTUNA_TARGET = Field("accuracy", description="Validation metric optimized by Optuna.")
+    classification_loss_strategy: CLASSIFICATION_LOSS_STRATEGY = Field(
+        "standard",
+        description="Whether to use normal SFT loss or upweight class-label tokens.",
+    )
+    classification_loss_weight: float = Field(
+        3.0,
+        ge=1.0,
+        description="Weight applied to class-label tokens when classification_loss_strategy is label_weighted.",
+    )
+    class_balance_ratios: List[ClassBalanceRatio] = Field(
+        default_factory=lambda: [(1, 1, 1)],
+        description="Candidate runtime:functional:correct ratios for syntax-free training.",
+    )
+    exclude_syntax_from_training: bool = Field(
+        False,
+        description="Exclude records that contain the syntax label from the training split.",
+    )
+    class_balance_enabled: bool = Field(
+        False,
+        description="Apply class_balance_ratios to the training split; validation and test remain unchanged.",
+    )
+    results_dir: str | None = Field(
+        None,
+        description="Directory for training JSONL and Optuna storage; defaults to dataset-building results_dir.",
+    )
     
     @classmethod
     def from_config(cls, config, models_options: Optional[Dict[str, ModelInfo]] = None) -> "TrainingConfig":
@@ -41,11 +77,20 @@ class TrainingConfig(BaseModel):
         num_epochs_options = config.get("training", {}).get("num_epochs", [3])
         bias_options = config.get("training", {}).get("bias", ["none"])
         optimizer_options = config.get("training", {}).get("optimizer", ["adamw_torch_fused"])
+        class_balance_ratios = config.get("training", {}).get("class_balance_ratios", [[1, 1, 1]])
+        normalized_ratios: list[ClassBalanceRatio] = []
+        for ratio in class_balance_ratios:
+            if not isinstance(ratio, (list, tuple)) or len(ratio) != 3:
+                raise ValueError("training.class_balance_ratios entries must be [runtime, functional, correct].")
+            normalized = tuple(int(value) for value in ratio)
+            if any(value <= 0 for value in normalized):
+                raise ValueError("training.class_balance_ratios values must be positive integers.")
+            normalized_ratios.append(normalized)
         
         hyperparameters = []
         
-        for model, use_qlora, lora_r, lora_alpha, lora, learning_rate, num_epochs, bias, optimizer in product(
-            models, use_qlora_options, lora_r_options, lora_alpha_options, lora_dropout_options, learning_rate_options, num_epochs_options, bias_options, optimizer_options
+        for model, use_qlora, lora_r, lora_alpha, lora, learning_rate, num_epochs, bias, optimizer, class_balance_ratio in product(
+            models, use_qlora_options, lora_r_options, lora_alpha_options, lora_dropout_options, learning_rate_options, num_epochs_options, bias_options, optimizer_options, normalized_ratios
         ):
             hyperparameters.append(TrainingHyperparameters(
                 model_name=model,
@@ -57,6 +102,9 @@ class TrainingConfig(BaseModel):
                 num_epochs=num_epochs,
                 bias=bias,
                 optimizer=optimizer,
+                classification_loss_strategy=config.get("training", {}).get("classification_loss_strategy", "standard"),
+                classification_loss_weight=config.get("training", {}).get("classification_loss_weight", 3.0),
+                class_balance_ratio=class_balance_ratio,
             ))
         
         return cls(
@@ -65,15 +113,23 @@ class TrainingConfig(BaseModel):
                 "models_path",
                 config.get("training", {}).get("model_output_dir", "models"),
             ),
+            checkpoints_path=config.get("training", {}).get("checkpoints_path"),
             max_saved_models=config.get("training", {}).get(
                 "max_saved_models",
                 config.get("training", {}).get("max_salved_models", 5),
             ),
-            search_strategy=config.get("training", {}).get("search_strategy", "grid"),
+            search_strategy=config.get("training", {}).get("search_strategy", "optuna"),
             random_seed=config.get("training", {}).get("random_seed", 42),
-            bayesian_random_starts=config.get("training", {}).get("bayesian_random_starts", 5),
-            bayesian_good_quantile=config.get("training", {}).get("bayesian_good_quantile", 0.35),
-            bayesian_candidates=config.get("training", {}).get("bayesian_candidates", 128),
+            max_trials=config.get("training", {}).get("max_trials", 40),
+            optuna_startup_trials=config.get("training", {}).get("optuna_startup_trials", 10),
+            optuna_study_name=config.get("training", {}).get("optuna_study_name", "hallucination_detection"),
+            optuna_target=config.get("training", {}).get("optuna_target", "accuracy"),
+            classification_loss_strategy=config.get("training", {}).get("classification_loss_strategy", "standard"),
+            classification_loss_weight=config.get("training", {}).get("classification_loss_weight", 3.0),
+            class_balance_ratios=normalized_ratios,
+            exclude_syntax_from_training=config.get("training", {}).get("exclude_syntax_from_training", False),
+            class_balance_enabled=config.get("training", {}).get("class_balance_enabled", False),
+            results_dir=config.get("training", {}).get("results_dir"),
         )
 
 class TrainingResult(TrainingHyperparameters):

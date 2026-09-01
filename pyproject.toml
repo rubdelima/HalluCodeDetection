@@ -10,6 +10,7 @@ dependencies = [
     "ipykernel>=7.2.0",
     "jupyter>=1.1.1",
     "numpy>=2.4.5",
+    "optuna>=4.9.0",
     "ollama>=0.6.2",
     "pandas>=3.0.3",
     "pydantic>=2.13.4",
@@ -28,6 +29,7 @@ dependencies = [
     "seaborn>=0.13.2",
     "matplotlib>=3.10.9",
     "prompt-toolkit>=3.0.52",
+    "evalplus>=0.2.1",
 ]
 
 [tool.mypy]
