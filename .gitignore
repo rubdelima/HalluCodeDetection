@@ -10,6 +10,9 @@ wheels/
 # Virtual environments
 .venv
 
+# Local API credentials
+.env
+
 # Git files
 ./codehalu_jsons
 

@@ -1,0 +1,4 @@
+$pdf_mode = 5; # XeLaTeX
+$bibtex_use = 2; # Run BibTeX whenever the bibliography needs updating.
+$interaction = 'nonstopmode';
+$halt_on_error = 1;

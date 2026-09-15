@@ -81,6 +81,11 @@ def _build_candidate_code(example: EvalPlusExample, generated: str) -> str:
     return cleaned
 
 
+def build_candidate_code(example: EvalPlusExample, generated: str) -> str:
+    """Build the complete Python source used by EvalPlus without executing it."""
+    return _build_candidate_code(example, generated)
+
+
 _HARNESS = r"""
 import base64
 import copy

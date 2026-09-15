@@ -1,0 +1,74 @@
+% !TeX program = xelatex
+% !BIB program = bibtex
+\makeatletter
+\def\input@path{{template/}}
+\makeatother
+
+\documentclass{sbc2019}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage[table]{xcolor}
+\usepackage{tikz}
+\usepackage{fontawesome}
+\usepackage{academicons}
+\usepackage{hyperref}
+\usepackage[bottom]{footmisc}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc,fit}
+
+\definecolor{darkblue}{rgb}{0.0,0.0,0.0}
+\hypersetup{
+  colorlinks,
+  breaklinks,
+  linkcolor=darkblue,
+  urlcolor=darkblue,
+  anchorcolor=darkblue,
+  citecolor=darkblue
+}
+
+% Journal metadata for the submission version. Volume, issue, year, and DOI
+% are intentionally omitted because they are assigned during publication.
+\jid{JSERD}
+\jtitle{Journal of Software Engineering Research and Development}
+\copyrightstatement{This work is licensed under a Creative Commons Attribution 4.0 International License}
+
+\begin{document}
+
+\title[HalluCodeDetection]{HalluCodeDetection: Detecting Hallucinations in Code Generation}
+
+% TODO before submission: include the author's ORCID, institutional affiliation
+% (using its official English name), and contact email in this affiliation block.
+\author[de Lima]{
+  \affil{\textbf{Rubens Nascimento de Lima}}
+}
+
+\begin{frontmatter}
+\maketitle
+
+\begin{abstract}
+\textbf{Abstract}
+
+Abstract goes here.
+\end{abstract}
+
+\begin{keywords}
+Code Generation, Hallucination Detection, Small Language Models, Static Analysis
+\end{keywords}
+\end{frontmatter}
+
+\input{sections/1_introduction}
+\input{sections/2_related_work}
+\input{sections/3_methodology}
+
+\section{Results and Discussion}
+\label{sec:results}
+\input{sections/4_1_rq1}
+\input{sections/4_2_rq2}
+\input{sections/4_3_rq3}
+\input{sections/4_4_rq4}
+
+\input{sections/5_conclusion}
+
+\bibliographystyle{apalike}
+\bibliography{refs}
+
+\end{document}

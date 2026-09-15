@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
+from typing import Any, Optional, List
 
 from src.constants.models import ModelInfo, get_models_options
 import yaml
@@ -30,7 +30,11 @@ class DatasetBuildingConfig(BaseModel):
         return cls.from_config(config_data)
     
     @classmethod
-    def from_config(cls, config: Dict, models_options: Optional[Dict[str, ModelInfo]] = None) -> "DatasetBuildingConfig":
+    def from_config(
+        cls,
+        config: dict[str, Any],
+        models_options: Optional[dict[str, ModelInfo]] = None,
+    ) -> "DatasetBuildingConfig":
         models_options = get_models_options(config) if models_options is None else models_options
         building = config.get("dataset_building", {})
         judge_models_raw = building.get("judge_models", [])
@@ -39,18 +43,35 @@ class DatasetBuildingConfig(BaseModel):
             judge_models_raw = [single] if single else []
         judge_models: List[ModelInfo] = []
         for entry in judge_models_raw:
+            model_id: str | None
+            overrides: dict[str, object]
             if isinstance(entry, str):
-                model_id, num_ctx, think = entry, None, None
+                model_id, overrides = entry, {}
             elif isinstance(entry, dict):
-                model_id = entry.get("id")
-                num_ctx = entry.get("num_ctx")
-                think = entry.get("think")
+                candidate_id = entry.get("id")
+                model_id = candidate_id if isinstance(candidate_id, str) else None
+                overrides = {
+                    key: entry[key]
+                    for key in (
+                        "num_ctx",
+                        "think",
+                        "max_tokens",
+                        "request_timeout",
+                        "threads",
+                        "max_retries",
+                        "retry_base_delay",
+                        "reasoning_effort",
+                    )
+                    if key in entry
+                }
             else:
+                continue
+            if model_id is None:
                 continue
             model = models_options.get(model_id)
             if model is None:
                 continue
-            judge_models.append(model.model_copy(update={"num_ctx": num_ctx, "think": think}))
+            judge_models.append(model.model_copy(update=overrides))
         models_str = building.get("models", [])
         models = [model for model_id, model in models_options.items() if model_id in models_str]
         datasets_base = building.get("datasets_base", building.get("dataset_base", ["mbpp"]))
@@ -77,7 +98,7 @@ class DatasetConfig(BaseModel):
     test_size : float = Field(0.1, description="Fraction of the dataset to use for testing. Must be in (0, 1).")
     
     @classmethod
-    def from_config(cls, config: dict) -> "DatasetConfig":
+    def from_config(cls, config: dict[str, Any]) -> "DatasetConfig":
         return cls(
             load_size=config.get("dataset", {}).get("load_size", 1.0),
             correct_size=config.get("dataset", {}).get("correct_size", 1.0),

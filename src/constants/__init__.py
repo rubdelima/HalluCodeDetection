@@ -1,10 +1,11 @@
-import yaml
 from pathlib import Path
-from dataclasses import dataclass
+
+import yaml
 
 from src.constants.dataset import DatasetBuildingConfig, DatasetConfig
 from src.constants.evaluation import EvaluationConfig
-from src.constants.models import ModelInfo
+from src.constants.phase6 import Phase6Config
+from src.constants.phase7 import Phase7Config
 from src.constants.training import TrainingConfig
 from src.constants.ui import UIConfig
 
@@ -45,3 +46,5 @@ class HalluCodeDetectionConfig:
         self.evaluation_config = EvaluationConfig.from_config(config_data)
         self.training_config = TrainingConfig.from_config(config_data)
         self.ui_config = UIConfig.from_config(config_data)
+        self.phase6_config = Phase6Config.from_config(config_data)
+        self.phase7_config = Phase7Config.from_config(config_data)

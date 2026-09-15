@@ -22,7 +22,7 @@ models:
 
     - id: gemma4:e2b
       name: Gemma 4 E2B (Ollama)
-      size: 2
+      size: 5
 
     - id: gemma4:e4b
       name: Gemma 4 E4B (Ollama)
@@ -64,7 +64,7 @@ models:
 
     - id: google/gemma-4-E2B-it
       name: Gemma 4 E2B IT (FP16)
-      size: 2
+      size: 5
       local_path: /mnt/ssd/HalluCode/hf-models/google--gemma-4-E2B-it
 
     - id: google/gemma-4-E4B-it
@@ -88,6 +88,24 @@ models:
     - id: data/trained_models/f2743b4e
       name: Best Trained Model (QLoRA)
       size: 4
+
+  # OpenCode Go uses its OpenAI-compatible Chat Completions endpoint.
+  # The API key is read from OPENCODE_GO_API_KEY (for example, from .env).
+  # threads controls concurrent requests and is ignored by local model types.
+  opencode_go:
+    - id: deepseek-v4.1-flash
+      name: DeepSeek V4.1 Flash (OpenCode Go)
+      size: 0
+      threads: 12
+      reasoning_effort: none
+
+    - id: mimo-v2.5
+      name: MiMo-V2.5 (OpenCode Go)
+      size: 0
+      threads: 12
+      max_retries: 4
+      retry_base_delay: 2.0
+      reasoning_effort: none
 
   
 dataset_building:
@@ -235,3 +253,33 @@ evaluation:
     - google/gemma-4-E2B-it
     - google/gemma-4-E4B-it
     - trained/gemma-4-e4b-best
+    - deepseek-v4.1-flash
+    - mimo-v2.5
+
+# Phase 6 repeats code generation with compile + Pyright feedback. EvalPlus is
+# used only once on the final candidate and its results are never sent back to
+# the model. Results are isolated from Phase 1.
+phase6:
+  models:
+    - deepseek-v4.1-flash
+    - mimo-v2.5
+  max_rounds: 5
+  generation_temperature: 0.0
+  review_temperature: 0.0
+  dataset_load: 1.0
+  random_seed: 42
+  checkpoint_interval: 1
+  overwrite: false
+  results_dir: ./data/results/evalplus/phase6/
+  phase1_results_path: ./data/results/evalplus/phase1_opencode_baselines/dataset_base.json
+
+# Phase 7 classifies the original, held-out Phase-1 generations with static
+# feedback. It never consumes Phase-6 outputs and is isolated from Phase 4.
+phase7:
+  models:
+    - deepseek-v4.1-flash
+    - mimo-v2.5
+  model_temperature: 0.0
+  checkpoint_interval: 1
+  overwrite: false
+  results_dir: ./data/results/evalplus/phase7/

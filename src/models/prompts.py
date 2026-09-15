@@ -33,6 +33,50 @@ def build_generation_prompt(
     return build_solve_prompt(problem, signature)
 
 
+tool_review_system_prompt = """
+You are reviewing your own Python solution with feedback from static-analysis tools.
+Decide whether to submit the current solution or revise it. The tools can miss logical
+and input-dependent errors, so also inspect the implementation against the problem.
+Return only valid JSON, without Markdown fences, using this schema:
+{"decision":"submit|revise","assessment":"short explanation","code":"complete replacement code"}
+When decision is submit, copy the current code unchanged into `code`. When revising,
+return the complete replacement implementation. Do not include tests or example usage.
+""".strip()
+
+
+def build_tool_review_prompt(
+    problem: str,
+    signature: str | None,
+    is_completion: bool,
+    code: str,
+    tool_feedback: str,
+    round_number: int,
+    max_rounds: int,
+) -> str:
+    expected_form = (
+        "The code may be a function body or the complete function implementation."
+        if is_completion
+        else f"The required function signature is: {signature or 'specified in the problem'}"
+    )
+    return (
+        f"Problem:\n{problem}\n\n"
+        f"{expected_form}\n\n"
+        f"Current candidate (round {round_number} of {max_rounds}):\n{code}\n\n"
+        f"Static-analysis feedback:\n{tool_feedback}\n\n"
+        "Perform a self-assessment and return the required JSON."
+    )
+
+
+def build_tool_assisted_judge_prompt(code: str, tool_feedback: str) -> str:
+    return (
+        "Candidate code:\n"
+        f"{code}\n\n"
+        "Static-analysis feedback (use it as evidence, but remember that it can be incomplete):\n"
+        f"{tool_feedback}\n\n"
+        "Classify the candidate according to the requested JSON schema."
+    )
+
+
 judge_system_prompt = (
     "You are a strict code reviewer for a hallucination detection dataset. "
     "Return ONLY a valid JSON object with the key 'levels', where 'levels' is a list of objects, "
@@ -61,12 +105,16 @@ def build_judge_prompt(
         "The code was classified with the following error types:",
         ", ".join(lv.level_name for lv in levels),
         "",
-        "For EACH error type above, write a GENERAL explanation of why the code can fail that way. "
-        "Do not describe specific test cases or specific inputs. "
-        "Generalize the failure condition (the kind of input or situation that triggers the error and why).",
+        (
+            "For EACH error type above, write a GENERAL explanation of why the code can fail that way. "
+            "Do not describe specific test cases or specific inputs. "
+            "Generalize the failure condition (the kind of input or situation that triggers the error and why)."
+        ),
         "",
-        "Return ONLY a JSON object with the following format: "
-        '{"levels": [{"level": "<type>", "explanation": "<general reason>"}, ...]}.',
+        (
+            "Return ONLY a JSON object with the following format: "
+            '{"levels": [{"level": "<type>", "explanation": "<general reason>"}, ...]}.'
+        ),
     ]
     return "\n".join(parts)
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Iterable, Mapping
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import Completer, Completion
@@ -23,7 +24,6 @@ from rich.progress import (
 )
 from rich.table import Table
 from rich.text import Text
-
 
 console = Console()
 
@@ -171,7 +171,46 @@ def build_progress(total: int, counts: dict[str, int]) -> tuple[Progress, TaskID
     )
     return progress, task_id
 
-from dataclasses import dataclass
+
+def build_phase6_progress(
+    total: int,
+    counts: dict[str, int],
+    max_rounds: int,
+) -> tuple[Progress, TaskID]:
+    """Build Phase-6 progress that exposes work inside unfinished tasks."""
+    progress = Progress(
+        SpinnerColumn(),
+        TextColumn("{task.fields[model]}"),
+        TextColumn("{task.fields[bench]}"),
+        TextColumn("{task.fields[bench_id]}"),
+        TextColumn("round {task.fields[round]}/{task.fields[max_rounds]}"),
+        TextColumn("cycles:{task.fields[cycles]}"),
+        TextColumn("C:{task.fields[c]}"),
+        TextColumn("F:{task.fields[f]}"),
+        TextColumn("R:{task.fields[r]}"),
+        TextColumn("S:{task.fields[s]}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeElapsedColumn(),
+        TimeRemainingColumn(),
+        console=console,
+    )
+    task_id = progress.add_task(
+        "phase6",
+        total=total,
+        model="-",
+        bench="-",
+        bench_id="-",
+        round="-",
+        max_rounds=max_rounds,
+        cycles=0,
+        c=counts["correct"],
+        f=counts["functional"],
+        r=counts["runtime"],
+        s=counts["syntax"],
+    )
+    return progress, task_id
+
 
 @dataclass
 class OllamaResponse:

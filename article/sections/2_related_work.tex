@@ -1,0 +1,38 @@
+\section{Related Work}
+\label{sec:related-work}
+
+\subsection{Hallucinations in code generation}
+
+The term \emph{hallucination} has no single, universally accepted operational definition in code generation.  \citet{pavel2025hallucination} characterize it as an output that appears plausible but is factually incorrect, unverifiable, or nonsensical, and document syntax violations, invalid references, and API-knowledge conflicts in an automotive case study.  This definition is useful because plausibility alone is not evidence that generated code compiles, runs, or fulfills its specification.
+
+\citet{lee2025hallucination} survey code-generation hallucinations and organize them into syntactic, runtime-execution, functional-correctness, and code-quality hallucinations.  We adopt the first three observable-error classes: a syntactic hallucination violates the language grammar; a runtime hallucination prevents normal execution; and a functional-correctness hallucination executes but does not satisfy the task specification.  Code quality is deliberately outside the scope of HalluCodeDetection, whose target is correctness and executability rather than style, maintainability, or efficiency.
+
+Other taxonomies make clear that these labels should be treated as an evaluation-oriented abstraction rather than as a claim that all defects have one cause.  CodeHalu defines code hallucinations through execution-based verification and groups them as mapping, naming, resource, and logical hallucinations~\citep{tian2025codehalu}.  These categories emphasize the origin or manifestation of an error, whereas our labels describe the directly observable outcome of generated code.  The two perspectives are therefore complementary: a naming hallucination, for example, may surface as either a runtime failure or a functional failure depending on how it is used.
+
+\subsection{Empirical evidence on failures in generated code}
+
+Empirical studies show that errors in generated code extend beyond simple compilation failures.  \citet{dou2025whatswrong} evaluate closed- and open-source LLMs across three benchmarks, report that harder problems remain challenging, and derive a taxonomy with three bug categories and ten subcategories.  Their real-world benchmark also shows that error distributions can differ from those observed on standard benchmarks.  This motivates reporting error types explicitly instead of relying only on aggregate pass rates.
+
+The automotive study of \citet{pavel2025hallucination} further demonstrates that failures can be tied to domain knowledge and API constraints, even when a prompt is enriched with context.  Together, these studies motivate evaluating whether a detector generalizes across error modes and model families, rather than assuming that one benchmark or one generator captures the whole failure distribution.
+
+\subsection{Automatic evaluation and error detection}
+
+Execution against tests remains a direct oracle for syntax, runtime, and many functional failures.  EvalPlus augments code-generation benchmarks with automatically generated tests and shows that the original tests can miss incorrect programs and even mis-rank models~\citep{liu2023evalplus}.  Accordingly, the labels used by HalluCodeDetection should be grounded in compilation and execution results together with strengthened tests wherever possible; a passing small test suite must not be interpreted as proof of semantic correctness.
+
+CodeHalu operationalizes this idea with dynamic, execution-based verification and introduces CodeHaluEval, a benchmark containing 8,883 samples from 699 tasks~\citep{tian2025codehalu}.  It is closely related because it detects and quantifies code hallucinations, but it uses a heuristic procedure and a taxonomy different from the three outcome classes used here.  HalluCodeDetection instead frames detection as supervised multi-label classification of observable syntactic, runtime, and functional errors.
+
+The closest detector-oriented comparison is \citet{andriushchenko-etal-2026-efficient}, who construct line-level hallucination annotations and train a lightweight Transformer detector using LLM internal representations.  Their work establishes that specialized detectors can outperform generic uncertainty baselines and may support subsequent self-correction.  HalluCodeDetection is complementary in target granularity: it predicts error categories for generated code, rather than locating hallucinated lines, and evaluates the role of specialized small language models and tool-derived evidence.
+
+\subsection{Specialized critics and rationale-based feedback}
+
+Learned evaluators have also been used as components of the generation loop.  CodeRL trains a critic to predict functional correctness and uses unit-test feedback and critic scores to guide regeneration~\citep{le2022coderl}.  Its outcome space includes compile errors, runtime errors, failed tests, and passed tests, which makes it a particularly relevant precedent for distinguishing observable failure modes.  However, CodeRL optimizes a generator through reinforcement learning; it is not a stand-alone, multi-label hallucination detector.
+
+This distinction matters for the positioning of HalluCodeDetection.  The contribution is not the broad idea of using a model to assess code---learned critics and detector models already exist---but the proposed supervised detector specialized for the selected hallucination taxonomy, its rationale-oriented training, and its empirical comparison with larger general-purpose models and tool-assisted signals.
+
+\subsection{Self-evaluation, self-correction, and tool-assisted generation}
+
+Several lines of work use feedback to revise an initial output.  Self-Refine iterates generation, self-feedback, and refinement without additional training~\citep{madaan2023selfrefine}, while Reflexion stores verbal reflections on feedback for later trials and includes coding tasks~\citep{shinn2023reflexion}.  These frameworks establish the general value of iterative feedback, but their feedback need not be a reliable, explicitly typed code-error diagnosis.
+
+For code specifically, Self-Debugging prompts an LLM to inspect execution results and explain its program before revising it~\citep{chen2024selfdebug}.  \citet{dou2025whatswrong} likewise propose a training-free loop using self-critique, bug types, and compiler feedback.  These approaches are complementary to HalluCodeDetection: tools such as compilers, interpreters, and tests can provide high-precision evidence when they are applicable, while a specialized detector can provide a typed warning when a full oracle is unavailable, incomplete, or too expensive to run.
+
+Thus, the article should avoid claiming that generation--evaluation--correction loops are new.  Its defensible distinction is the evaluated combination of a supervised, multi-label hallucination detector for syntactic, runtime, and functional failures; a focus on small specialized models; and tool-assisted evidence used alongside, rather than substituted for, detector predictions.

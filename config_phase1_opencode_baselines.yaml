@@ -1,0 +1,33 @@
+# Isolated Phase-1 baseline for the OpenCode Go models.
+#
+# This configuration intentionally writes outside the main Phase-1 directory.
+# Its generations must not be consumed by Phases 2, 3, or 4. It provides a
+# no-tool/no-cycle baseline for comparisons with tool-assisted experiments.
+extends: config.yaml
+
+dataset_building:
+  datasets_base:
+    - humaneval
+    - mbpp
+  dataset_load: 1.0
+  models:
+    - deepseek-v4.1-flash
+    - mimo-v2.5
+  # Match the original Phase-1 generation protocol for a fair comparison.
+  model_temperature: 1.0
+  judge_models: []
+  checkpoint_interval: 5
+  overwrite: false
+  results_dir: ./data/results/evalplus/phase1_opencode_baselines/
+  judge_results_dir: ./data/results/evalplus/phase1_opencode_baselines/judge_disabled/
+
+# Defensive empty lists: accidentally invoking another phase with this
+# dedicated configuration cannot add these rows to the main experiments.
+evaluation:
+  models: []
+
+phase6:
+  models: []
+
+phase7:
+  models: []

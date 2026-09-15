@@ -1,0 +1,26 @@
+rules:
+  - id: hallu-runtime-division-by-zero
+    languages: [python]
+    severity: ERROR
+    message: Division by the literal zero raises ZeroDivisionError.
+    patterns:
+      - pattern-either:
+          - pattern: $VALUE / 0
+          - pattern: $VALUE // 0
+          - pattern: $VALUE % 0
+
+  - id: hallu-runtime-explicit-not-implemented
+    languages: [python]
+    severity: ERROR
+    message: This path explicitly raises NotImplementedError.
+    pattern-either:
+      - pattern: raise NotImplementedError
+      - pattern: raise NotImplementedError(...)
+
+  - id: hallu-runtime-assert-false
+    languages: [python]
+    severity: ERROR
+    message: This path contains an assertion that always fails.
+    pattern-either:
+      - pattern: assert False
+      - pattern: assert False, ...

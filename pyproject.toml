@@ -14,6 +14,7 @@ dependencies = [
     "ollama>=0.6.2",
     "pandas>=3.0.3",
     "pydantic>=2.13.4",
+    "python-dotenv>=1.2.2",
     "pyyaml>=6.0.3",
     "rich>=15.0.0",
     "torch>=2.12.0",
@@ -30,6 +31,12 @@ dependencies = [
     "matplotlib>=3.10.9",
     "prompt-toolkit>=3.0.52",
     "evalplus>=0.2.1",
+    "tqdm>=4.67.3",
+    "ruff>=0.16.7",
+    "pyright>=1.1.414",
+    "pylint>=4.0.8",
+    "semgrep>=1.79.0",
+    "crosshair-tool>=0.0.110",
 ]
 
 [tool.mypy]

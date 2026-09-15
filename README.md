@@ -2,7 +2,7 @@ HalluCodeDetection
 =================
 
 HalluCodeDetection builds and evaluates datasets for hallucination detection in code-generation models.
-The workflow is organized into four phases that can be run independently from `main.py`.
+The workflow is organized into independent phases that can be run from `main.py`.
 
 Requirements
 ------------
@@ -36,6 +36,20 @@ Run Phase 1:
 ```bash
 uv run main.py --build_dataset
 ```
+
+Isolated OpenCode Go baseline (DeepSeek V4.1 Flash and MiMo-V2.5, generation
+only, without a tool cycle):
+
+```bash
+uv run main.py --config config_phase1_opencode_baselines.yaml --build_dataset
+```
+
+This command writes to
+`data/results/evalplus/phase1_opencode_baselines/dataset_base.json`. The
+dedicated configuration disables judge models and uses empty Phase-4, Phase-6,
+and Phase-7 model lists. Consequently, these baseline rows are not added to
+the dataset consumed by Phases 2, 3, or 4. Rerunning the command resumes by
+model and task without regenerating completed rows.
 
 Phase 2 - Judge Augmentation
 - A judge model reviews each result from Phase 1.
@@ -86,6 +100,80 @@ Run Phase 4:
 ```bash
 uv run main.py --evaluate
 ```
+
+Phase 5 - Static Analysis
+- Compares Python compilation, Ruff, Pyright, Pylint, Semgrep, and CrossHair.
+- Reports Runtime Recall (`RR`) and Syntax Recall (`RS`) both on the held-out
+  test tasks (`T`) and all unique Phase-1 generations (`G`).
+- `Avg T` is the average wall-clock time in seconds per checked generation.
+- The live panel is refreshed after every resumable batch. CrossHair is marked
+  experimental because its symbolic analysis is most effective on code with
+  assertions, type annotations, or contracts.
+
+Run the complete Phase 5 using the same split as the balanced Phase 4:
+
+```bash
+uv run main.py --config config_phase3_balanced.yaml --phase5
+```
+
+Run one or more tools, retry failed batches, or make a small smoke test:
+
+```bash
+uv run main.py --config config_phase3_balanced.yaml --phase5 --phase5_tool ruff --phase5_tool pyright
+uv run main.py --config config_phase3_balanced.yaml --phase5 --retry
+uv run main.py --config config_phase3_balanced.yaml --phase5 --phase5_limit 100
+```
+
+Phase-5 outputs are written under `results_dir/phase5/`:
+
+- `static_analysis_summary.csv`: the requested comparison table;
+- `static_analysis_results.jsonl`: per-sample predictions, diagnostics, tool
+  versions, timing, and status used for audit and automatic resumption.
+
+Phase 6 - Tool-assisted Code Generation
+- Produces fresh generations; it does not reuse Phase-1 code.
+- Each candidate receives feedback only from Python `compile` and Pyright.
+- The same model self-reviews the candidate and can submit it or revise it for
+  up to five rounds.
+- EvalPlus is run only once on the final candidate. Test results are never
+  returned to the model, so there is no test-driven retry.
+- Results are isolated in `phase6/generation_with_tools.jsonl`.
+
+Run Phase 6:
+
+```bash
+uv run main.py --config config_phase3_balanced.yaml --phase6
+```
+
+Phase 7 - Tool-assisted Error Classification
+- Reads original Phase-1 code and labels directly from `dataset_base.json`.
+- Uses the same held-out task IDs as Phase 4, but deduplicates the Phase-2
+  judge explanations, yielding 1,243 unique code samples from 113 tasks.
+- Gives `compile` and Pyright diagnostics to the classification model in a
+  single judgment call; there is no repair cycle.
+- Never reads Phase-6 results and writes only to
+  `phase7/classification_with_tools.jsonl`.
+
+Run Phase 7:
+
+```bash
+uv run main.py --config config_phase3_balanced.yaml --phase7
+```
+
+Short, resumable checks with OpenCode Go:
+
+```bash
+uv run main.py --config config_phase3_balanced.yaml --phase6 \
+  --model_name deepseek-v4.1-flash --phase6_limit 1 --phase6_rounds 2
+uv run main.py --config config_phase3_balanced.yaml --phase7 \
+  --model_name deepseek-v4.1-flash --phase7_only_errors --phase7_limit 1
+```
+
+Commands with a `--phase6_limit` or `--phase7_limit` write to a separate
+`*_smoke.jsonl` file, so short validation runs cannot contaminate full results.
+Completed rows are reused on later runs. `--retry` retries only calls that
+ended in an infrastructure/API error; it does not expose EvalPlus failures to
+the model or initiate a test-guided repair.
 
 Configuration
 -------------
