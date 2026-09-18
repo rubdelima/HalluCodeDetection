@@ -1,0 +1,12 @@
+Model,Avg Cycles,Correct,Functional,Runtime,Syntax
+devstral-small-2:24b,1.2593,415,130,30,0
+gemma3:4b,4.1119,250,163,50,109
+gemma4:31b,1.2504,454,92,22,1
+glm-4.7-flash:latest,2.6021,388,141,32,11
+gpt-oss:20b,1.1297,455,85,19,7
+muse-glimmer:30b,1.2114,458,81,24,4
+ornith-1.5:35b,1.4334,413,106,37,13
+qwen2.5-coder:32b,1.5719,396,135,36,8
+qwen2.5-coder:7b,1.8650,408,115,39,10
+qwen3-coder:30b,2.5897,389,113,36,35
+qwen3.8:27b,1.3606,445,96,26,1
