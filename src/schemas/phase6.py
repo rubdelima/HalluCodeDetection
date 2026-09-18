@@ -14,6 +14,8 @@ class Phase6Round(BaseModel):
     assessment: str = ""
     review_raw_response: str = ""
     review_thoughts: str | None = None
+    critique: str = ""
+    critique_raw_response: str = ""
 
 
 class Phase6ResultRow(BaseModel):

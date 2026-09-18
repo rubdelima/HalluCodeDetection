@@ -12,9 +12,14 @@ from src.models.prompts import (
     build_judge_prompt,
     build_tool_assisted_judge_prompt,
     build_tool_review_prompt,
+    build_analyzer_initial_prompt,
+    build_analyzer_feedback_prompt,
+    build_developer_feedback_prompt,
     judge_system_prompt,
     solve_problem_system,
     tool_review_system_prompt,
+    developer_agent_system_prompt,
+    analyzer_agent_system_prompt,
 )
 from src.schemas.dataset import BaseResultRow, JudgeExplanation, JudgeResultRow
 from src.schemas.judge import JudgeAnalysis, JudgeResponse
@@ -75,6 +80,100 @@ class BaseModelHandler(ABC):
     ) -> str:
         messages = self._generation_messages(example)
         return self._generate(messages, temperature).content
+
+    def start_developer_agent(
+        self,
+        example: SolveExample,
+        temperature: float,
+    ) -> tuple[str, list[dict[str, str]]]:
+        """Generate the first candidate and retain the developer-only history."""
+        messages = [
+            {"role": "system", "content": developer_agent_system_prompt},
+            *self._generation_messages(example)[1:],
+        ]
+        code = self._generate(messages, temperature).content.strip()
+        messages.append({"role": "assistant", "content": code})
+        return code, messages
+
+    def developer_agent_history(
+        self,
+        example: SolveExample,
+        code: str,
+    ) -> list[dict[str, str]]:
+        """Seed developer history when a provider pre-generated its first code."""
+        return [
+            {"role": "system", "content": developer_agent_system_prompt},
+            *self._generation_messages(example)[1:],
+            {"role": "assistant", "content": code},
+        ]
+
+    def revise_with_developer_feedback(
+        self,
+        messages: list[dict[str, str]],
+        assessment: str,
+        tool_feedback: str,
+        round_number: int,
+        max_rounds: int,
+        temperature: float,
+    ) -> CodeReviewResult:
+        messages.append(
+            {
+                "role": "user",
+                "content": build_developer_feedback_prompt(
+                    assessment, tool_feedback, round_number, max_rounds
+                ),
+            }
+        )
+        code = self._strip_markdown_fence(self._generate(messages, temperature).content)
+        messages.append({"role": "assistant", "content": code})
+        return code
+
+    def analyze_with_analyzer_agent(
+        self,
+        messages: list[dict[str, str]],
+        example: SolveExample,
+        code: str,
+        tool_feedback: str,
+        round_number: int,
+        max_rounds: int,
+        temperature: float,
+    ) -> str:
+        prompt = (
+            build_analyzer_initial_prompt(
+                example.prompt, example.function_signature, example.is_completion,
+                code, tool_feedback, round_number, max_rounds,
+            )
+            if len(messages) == 1
+            else build_analyzer_feedback_prompt(
+                code, tool_feedback, round_number, max_rounds
+            )
+        )
+        messages.append({"role": "user", "content": prompt})
+        response = self._generate(messages, temperature)
+        messages.append({"role": "assistant", "content": response.content})
+        payload = self._extract_json_payload(response.content)
+        if not payload:
+            return CodeReviewResult(
+                decision="revise",
+                assessment="The Analyzer did not return a valid decision JSON; revise using the static-tool feedback.",
+                code=code,
+                raw_response=response.content,
+                thoughts=response.thoughts,
+            )
+        decision = str(payload.get("decision", "revise")).strip().lower()
+        if decision not in {"submit", "revise"}:
+            decision = "revise"
+        return CodeReviewResult(
+            decision=decision,
+            assessment=str(payload.get("assessment", "")).strip(),
+            code=code,
+            raw_response=response.content,
+            thoughts=response.thoughts,
+        )
+
+    @staticmethod
+    def analyzer_agent_history() -> list[dict[str, str]]:
+        return [{"role": "system", "content": analyzer_agent_system_prompt}]
 
     def review_generated_code(
         self,

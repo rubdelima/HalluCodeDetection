@@ -1,0 +1,30 @@
+# Agentic Phase-6 experiment. It has independent Developer and Analyzer
+# histories and does not reuse results from the direct-review experiment.
+extends: config_phase6_phase7_local.yaml
+
+phase6:
+  interaction_mode: agentic
+  results_dir: /mnt/ssd/HalluCode/results/phase6_local_agentic
+
+# Phase 7 evaluates the same held-out Phase-1 code with every available local
+# judge: Ollama baselines, Hugging Face base Gemmas, and retained fine-tunes.
+phase7:
+  models:
+    - gpt-oss:20b
+    - gemma3:4b
+    - qwen2.5-coder:7b
+    - gemma4:31b
+    - muse-glimmer:30b
+    - qwen3.8:27b
+    - devstral-small-2:24b
+    - qwen2.5-coder:32b
+    - qwen3-coder:30b
+    - glm-4.7-flash:latest
+    - ornith-1.5:35b
+    - google/gemma-3-4b-it
+    - google/gemma-4-E2B-it
+    - google/gemma-4-E4B-it
+    - trained/gemma-4-e4b-best
+    - trained/gemma-4-e4b-weighted-macro-f1-best
+    - trained/gemma-4-e4b-balanced-macro-f1-best
+    - trained/gemma-4-e4b-balanced-accuracy-retrained

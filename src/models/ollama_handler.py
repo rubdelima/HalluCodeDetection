@@ -13,10 +13,17 @@ log = get_logger("ollama")
 
 
 class OllamaHandler(BaseModelHandler):
-    def __init__(self, model: str, num_ctx: int | None = None, think: bool | None = None) -> None:
+    def __init__(
+        self,
+        model: str,
+        num_ctx: int | None = None,
+        max_tokens: int | None = None,
+        think: bool | None = None,
+    ) -> None:
         super().__init__(model)
         self.spinner_length = 600
         self.num_ctx = num_ctx
+        self.max_tokens = max_tokens
         self.think = think if think is not None else False
         log.info("Loading model %s (num_ctx=%s, think=%s) ...", model, self.num_ctx, self.think)
         t0 = time.monotonic()
@@ -42,7 +49,9 @@ class OllamaHandler(BaseModelHandler):
         t0 = time.monotonic()
         options: dict[str, object] = {"temperature": temperature}
         if self.num_ctx is not None:
-            options["num_ctx"] = 8000 #self.num_ctx
+            options["num_ctx"] = self.num_ctx
+        if self.max_tokens is not None:
+            options["num_predict"] = self.max_tokens
         stream = ollama.chat(
             model=self.model,
             messages=messages,

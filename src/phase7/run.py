@@ -157,6 +157,15 @@ def run_phase7(
 ) -> None:
     phase = config.phase7_config
     models = _select_models(phase.models, model_names)
+    if phase.num_ctx is not None or phase.max_tokens is not None:
+        models = [
+            model.model_copy(update={
+                **({"num_ctx": phase.num_ctx} if phase.num_ctx is not None else {}),
+                **({"max_tokens": phase.max_tokens} if phase.max_tokens is not None else {}),
+            })
+            if model.type == "ollama" else model
+            for model in models
+        ]
     if not models:
         ui.console.print("[yellow]Skipping Phase 7: no models configured.[/]")
         return

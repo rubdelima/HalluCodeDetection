@@ -1,0 +1,53 @@
+# Local Ollama configuration for the tool-assisted experiments.
+# It preserves all prior configurations through config_phase3_balanced.yaml,
+# but isolates Phase-6 and Phase-7 artifacts from the OpenCode Go results.
+extends: config_phase3_balanced.yaml
+
+# These are the local Ollama generators present in Phase 1. Keeping the same
+# IDs enables the Phase-6 comparison against data/results/evalplus/dataset_base.json.
+phase6:
+  num_ctx: 12288
+  max_tokens: 3000
+  models:
+    - gpt-oss:20b
+    - gemma3:4b
+    - qwen2.5-coder:7b
+    - gemma4:31b
+    - muse-glimmer:30b
+    - qwen3.8:27b
+    - devstral-small-2:24b
+    - qwen2.5-coder:32b
+    - qwen3-coder:30b
+    - glm-4.7-flash:latest
+    - ornith-1.5:35b
+  max_rounds: 5
+  generation_temperature: 0.0
+  review_temperature: 0.0
+  dataset_load: 1.0
+  random_seed: 42
+  checkpoint_interval: 1
+  overwrite: false
+  results_dir: /mnt/ssd/HalluCode/results/phase6_local_tools
+  phase1_results_path: ./data/results/evalplus/dataset_base.json
+
+# Phase 7 uses the same local models as judges over the held-out Phase-1 task
+# IDs. It never reads Phase-6 results.
+phase7:
+  num_ctx: 12288
+  max_tokens: 3000
+  models:
+    - gpt-oss:20b
+    - gemma3:4b
+    - qwen2.5-coder:7b
+    - gemma4:31b
+    - muse-glimmer:30b
+    - qwen3.8:27b
+    - devstral-small-2:24b
+    - qwen2.5-coder:32b
+    - qwen3-coder:30b
+    - glm-4.7-flash:latest
+    - ornith-1.5:35b
+  model_temperature: 0.0
+  checkpoint_interval: 1
+  overwrite: false
+  results_dir: /mnt/ssd/HalluCode/results/phase7_local_tools

@@ -205,6 +205,7 @@ def _evaluate_task(
     max_rounds: int,
     generation_temperature: float,
     review_temperature: float,
+    interaction_mode: str,
     tests_timeout: int,
     on_cycle: Callable[[Phase6Task, int], None] | None = None,
     initial_code: str | None = None,
@@ -213,11 +214,20 @@ def _evaluate_task(
     rounds: list[Phase6Round] = []
     code = ""
     try:
-        code = (
-            initial_code
-            if initial_code is not None
-            else handler.generate_code(example, generation_temperature)
-        ).strip()
+        developer_history: list[dict[str, str]] | None = None
+        analyzer_history: list[dict[str, str]] | None = None
+        if initial_code is not None:
+            code = initial_code.strip()
+            if interaction_mode == "agentic":
+                developer_history = handler.developer_agent_history(example, code)
+                analyzer_history = handler.analyzer_agent_history()
+        elif interaction_mode == "agentic":
+            code, developer_history = handler.start_developer_agent(
+                example, generation_temperature
+            )
+            analyzer_history = handler.analyzer_agent_history()
+        else:
+            code = handler.generate_code(example, generation_temperature).strip()
         for round_number in range(1, max_rounds + 1):
             feedback = analyze_with_compile_and_pyright(code, example)
             round_row = Phase6Round(
@@ -228,6 +238,38 @@ def _evaluate_task(
             rounds.append(round_row)
             if on_cycle is not None:
                 on_cycle(task, round_number)
+            if interaction_mode == "agentic":
+                if developer_history is None:
+                    developer_history = handler.developer_agent_history(example, code)
+                if analyzer_history is None:
+                    analyzer_history = handler.analyzer_agent_history()
+                review = handler.analyze_with_analyzer_agent(
+                    messages=analyzer_history,
+                    example=example,
+                    code=code,
+                    tool_feedback=feedback.as_prompt(),
+                    round_number=round_number,
+                    max_rounds=max_rounds,
+                    temperature=review_temperature,
+                )
+                round_row.decision = review.decision
+                round_row.assessment = review.assessment
+                round_row.review_raw_response = review.raw_response
+                round_row.review_thoughts = review.thoughts
+                round_row.critique = review.assessment
+                round_row.critique_raw_response = review.raw_response
+                if review.decision == "submit" or round_number == max_rounds:
+                    break
+                code = handler.revise_with_developer_feedback(
+                    messages=developer_history,
+                    assessment=review.assessment,
+                    tool_feedback=feedback.as_prompt(),
+                    round_number=round_number,
+                    max_rounds=max_rounds,
+                    temperature=generation_temperature,
+                )
+                continue
+
             if round_number == max_rounds:
                 break
 
@@ -304,6 +346,15 @@ def run_phase6(
 ) -> None:
     phase = config.phase6_config
     models = _select_models(phase.models, model_names)
+    if phase.num_ctx is not None or phase.max_tokens is not None:
+        models = [
+            model.model_copy(update={
+                **({"num_ctx": phase.num_ctx} if phase.num_ctx is not None else {}),
+                **({"max_tokens": phase.max_tokens} if phase.max_tokens is not None else {}),
+            })
+            if model.type == "ollama" else model
+            for model in models
+        ]
     if not models:
         ui.console.print("[yellow]Skipping Phase 6: no models configured.[/]")
         return
@@ -486,6 +537,7 @@ def run_phase6(
                         max_rounds=rounds_to_run,
                         generation_temperature=phase.generation_temperature,
                         review_temperature=phase.review_temperature,
+                        interaction_mode=phase.interaction_mode,
                         tests_timeout=config.dataset_building_config.tests_timeout,
                         on_cycle=report_cycle,
                         initial_code=first_code,
@@ -505,6 +557,7 @@ def run_phase6(
                             max_rounds=rounds_to_run,
                             generation_temperature=phase.generation_temperature,
                             review_temperature=phase.review_temperature,
+                            interaction_mode=phase.interaction_mode,
                             tests_timeout=config.dataset_building_config.tests_timeout,
                             on_cycle=report_cycle,
                         ): task
@@ -529,6 +582,7 @@ def run_phase6(
                             max_rounds=rounds_to_run,
                             generation_temperature=phase.generation_temperature,
                             review_temperature=phase.review_temperature,
+                            interaction_mode=phase.interaction_mode,
                             tests_timeout=config.dataset_building_config.tests_timeout,
                             on_cycle=report_cycle,
                         )

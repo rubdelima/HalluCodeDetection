@@ -44,6 +44,23 @@ return the complete replacement implementation. Do not include tests or example 
 """.strip()
 
 
+developer_agent_system_prompt = """
+You are the Developer agent in a software-development workflow. Produce only a
+complete Python implementation for the requested task. Do not provide analysis,
+JSON, Markdown fences, tests, or example usage. When the user gives evaluator and
+tool feedback, revise the previous implementation accordingly.
+""".strip()
+
+
+analyzer_agent_system_prompt = """
+You are the Analyzer agent in a software-development workflow. You never write
+or modify code. Examine the candidate code against the task and static-tool
+feedback, then decide whether it should be submitted or revised. Return only
+valid JSON without Markdown fences:
+{"decision":"submit|revise","assessment":"concise justification"}
+""".strip()
+
+
 def build_tool_review_prompt(
     problem: str,
     signature: str | None,
@@ -64,6 +81,56 @@ def build_tool_review_prompt(
         f"Current candidate (round {round_number} of {max_rounds}):\n{code}\n\n"
         f"Static-analysis feedback:\n{tool_feedback}\n\n"
         "Perform a self-assessment and return the required JSON."
+    )
+
+
+def build_analyzer_initial_prompt(
+    problem: str,
+    signature: str | None,
+    is_completion: bool,
+    code: str,
+    tool_feedback: str,
+    round_number: int,
+    max_rounds: int,
+) -> str:
+    expected_form = (
+        "The candidate may be a function body or a complete function implementation."
+        if is_completion
+        else f"The required function signature is: {signature or 'specified in the task'}"
+    )
+    return (
+        f"Task:\n{problem}\n\n{expected_form}\n\n"
+        f"Candidate code (cycle {round_number} of {max_rounds}):\n{code}\n\n"
+        f"Static-tool feedback:\n{tool_feedback}\n\n"
+        "Analyze this candidate and return the required decision JSON."
+    )
+
+
+def build_analyzer_feedback_prompt(
+    code: str,
+    tool_feedback: str,
+    round_number: int,
+    max_rounds: int,
+) -> str:
+    return (
+        f"New candidate code (cycle {round_number} of {max_rounds}):\n{code}\n\n"
+        f"Static-tool feedback:\n{tool_feedback}\n\n"
+        "Using the task and previous discussion, analyze this new candidate and return "
+        "the required decision JSON."
+    )
+
+
+def build_developer_feedback_prompt(
+    assessment: str,
+    tool_feedback: str,
+    round_number: int,
+    max_rounds: int,
+) -> str:
+    return (
+        f"The Analyzer requested revision after cycle {round_number} of {max_rounds}.\n"
+        f"Analyzer feedback:\n{assessment}\n\n"
+        f"Static-tool feedback:\n{tool_feedback}\n\n"
+        "Revise the previous candidate. Return only the complete Python implementation."
     )
 
 

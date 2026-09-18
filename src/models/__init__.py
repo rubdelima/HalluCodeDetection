@@ -6,7 +6,12 @@ def get_model_handler(model: ModelInfo) -> BaseModelHandler:
     if model.type == "ollama":
         from .ollama_handler import OllamaHandler
 
-        return OllamaHandler(model.id, num_ctx=model.num_ctx, think=model.think)
+        return OllamaHandler(
+            model.id,
+            num_ctx=model.num_ctx,
+            max_tokens=model.max_tokens,
+            think=model.think,
+        )
     if model.type == "gemma":
         from .gemma import GemmaHandler
 

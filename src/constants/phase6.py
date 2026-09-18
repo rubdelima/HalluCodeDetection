@@ -9,6 +9,13 @@ from src.constants.models import ModelInfo, get_models_options
 
 class Phase6Config(BaseModel):
     models: list[ModelInfo] = Field(default_factory=list)
+    num_ctx: int | None = Field(None, gt=0, description="Ollama context window used by Phase 6.")
+    max_tokens: int | None = Field(None, gt=0, description="Maximum generated tokens per Ollama call in Phase 6.")
+    interaction_mode: str = Field(
+        "direct",
+        pattern="^(direct|agentic)$",
+        description="How generation and review agents interact in Phase 6.",
+    )
     max_rounds: int = Field(5, ge=1, le=20)
     generation_temperature: float = 0.0
     review_temperature: float = 0.0
@@ -28,6 +35,9 @@ class Phase6Config(BaseModel):
         model_ids = section.get("models", [])
         return cls(
             models=[options[model_id] for model_id in model_ids if model_id in options],
+            num_ctx=section.get("num_ctx"),
+            max_tokens=section.get("max_tokens"),
+            interaction_mode=section.get("interaction_mode", "direct"),
             max_rounds=section.get("max_rounds", 5),
             generation_temperature=section.get("generation_temperature", 0.0),
             review_temperature=section.get("review_temperature", 0.0),
