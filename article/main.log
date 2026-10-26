@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999997 (TeX Live 2025/Debian) (preloaded format=xelatex 2026.9.8)  14 SEP 2026 17:30
+This is XeTeX, Version 3.141592653-2.6-0.999997 (TeX Live 2025/Debian) (preloaded format=xelatex 2026.9.8)  23 OCT 2026 09:32
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1713,6 +1713,53 @@ Package footmisc Info: Declaring symbol style lamport* on input line 597.
 Package footmisc Info: Declaring symbol style lamport*-robust on input line 618
 .
 )
+(./template/algorithm.sty
+
+LaTeX Warning: You have requested package `template/algorithm',
+               but the package provides `algorithm'.
+
+Package: algorithm 2009/08/24 v0.1 Document Style `algorithm' - floating enviro
+nment
+(/usr/share/texlive/texmf-dist/tex/latex/float/float.sty
+Package: float 2001/11/08 v1.3d Float enhancements (AL)
+\c@float@type=\count358
+\float@exts=\toks48
+\float@box=\box72
+\@float@everytoks=\toks49
+\@floatcapt=\box73
+)
+(/usr/share/texlive/texmf-dist/tex/latex/base/ifthen.sty
+Package: ifthen 2024/03/16 v1.1e Standard LaTeX ifthen package (DPC)
+)
+\@float@every@algorithm=\toks50
+\c@algorithm=\count359
+)
+(./template/algpseudocode.sty
+
+LaTeX Warning: You have requested package `template/algpseudocode',
+               but the package provides `algpseudocode'.
+
+Package: algpseudocode 
+(./template/algorithmicx.sty
+
+LaTeX Warning: You have requested package `template/algorithmicx',
+               but the package provides `algorithmicx'.
+
+Package: algorithmicx 2005/04/27 v1.2 Algorithmicx
+Document Style algorithmicx 1.2 - a greatly improved `algorithmic' style
+\c@ALG@line=\count360
+\c@ALG@rem=\count361
+\c@ALG@nested=\count362
+\ALG@tlm=\skip83
+\ALG@thistlm=\skip84
+\c@ALG@Lnr=\count363
+\c@ALG@blocknr=\count364
+\c@ALG@storecount=\count365
+\c@ALG@tmpcounter=\count366
+\ALG@tmplength=\skip85
+)
+Document Style - pseudocode environments for use with the `algorithmicx' style
+)
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/libraries/pgflibraryarrows.meta.
 code.tex
 File: pgflibraryarrows.meta.code.tex 2025-08-29 v3.1.11a (3.1.11a)
@@ -1741,38 +1788,38 @@ File: tikzlibrarycalc.code.tex 2025-08-29 v3.1.11a (3.1.11a)
 zlibraryfit.code.tex
 File: tikzlibraryfit.code.tex 2025-08-29 v3.1.11a (3.1.11a)
 )
-Package hyperref Info: Option `colorlinks' set `true' on input line 26.
-Package hyperref Info: Option `breaklinks' set `true' on input line 26.
+Package hyperref Info: Option `colorlinks' set `true' on input line 28.
+Package hyperref Info: Option `breaklinks' set `true' on input line 28.
  (./main.aux)
 \openout1 = `main.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 34.
-LaTeX Font Info:    ... okay on input line 34.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 34.
-LaTeX Font Info:    ... okay on input line 34.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 34.
-LaTeX Font Info:    ... okay on input line 34.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 34.
-LaTeX Font Info:    ... okay on input line 34.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 34.
-LaTeX Font Info:    ... okay on input line 34.
-LaTeX Font Info:    Checking defaults for TU/lmr/m/n on input line 34.
-LaTeX Font Info:    ... okay on input line 34.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 34.
-LaTeX Font Info:    ... okay on input line 34.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 34.
-LaTeX Font Info:    ... okay on input line 34.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 34.
-LaTeX Font Info:    ... okay on input line 34.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 34.
-LaTeX Font Info:    ... okay on input line 34.
-LaTeX Info: Redefining \microtypecontext on input line 34.
-Package microtype Info: Applying patch `item' on input line 34.
-Package microtype Info: Applying patch `toc' on input line 34.
-Package microtype Info: Applying patch `eqnum' on input line 34.
-Package microtype Info: Applying patch `footnote' on input line 34.
-Package microtype Info: Applying patch `verbatim' on input line 34.
-LaTeX Info: Redefining \microtypesetup on input line 34.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 36.
+LaTeX Font Info:    ... okay on input line 36.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 36.
+LaTeX Font Info:    ... okay on input line 36.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 36.
+LaTeX Font Info:    ... okay on input line 36.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 36.
+LaTeX Font Info:    ... okay on input line 36.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 36.
+LaTeX Font Info:    ... okay on input line 36.
+LaTeX Font Info:    Checking defaults for TU/lmr/m/n on input line 36.
+LaTeX Font Info:    ... okay on input line 36.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 36.
+LaTeX Font Info:    ... okay on input line 36.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 36.
+LaTeX Font Info:    ... okay on input line 36.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 36.
+LaTeX Font Info:    ... okay on input line 36.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 36.
+LaTeX Font Info:    ... okay on input line 36.
+LaTeX Info: Redefining \microtypecontext on input line 36.
+Package microtype Info: Applying patch `item' on input line 36.
+Package microtype Info: Applying patch `toc' on input line 36.
+Package microtype Info: Applying patch `eqnum' on input line 36.
+Package microtype Info: Applying patch `footnote' on input line 36.
+Package microtype Info: Applying patch `verbatim' on input line 36.
+LaTeX Info: Redefining \microtypesetup on input line 36.
 Package microtype Info: Character protrusion enabled (level 2).
 Package microtype Info: Using default protrusion set `alltext'.
 Package microtype Info: Tracking enabled.
@@ -1784,6 +1831,7 @@ Package microtype Info: Loading generic protrusion settings for font family
 (microtype)             For optimal results, create family-specific settings.
 (microtype)             See the microtype manual for details.
 Package caption Info: Begin \AtBeginDocument code.
+Package caption Info: float package is loaded.
 Package caption Info: hyperref package is loaded.
 Package caption Info: End \AtBeginDocument code.
 
@@ -1821,13 +1869,13 @@ Package caption Info: End \AtBeginDocument code.
 * \@reversemarginfalse
 * (1in=72.27pt=25.4mm, 1cm=28.453pt)
 
-Package hyperref Info: Link coloring ON on input line 34.
+Package hyperref Info: Link coloring ON on input line 36.
 (./main.out) (./main.out)
 \@outlinefile=\write4
 \openout4 = `main.out'.
 
-LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 5
-6.
+LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 6
+0.
  (/usr/share/texmf/tex/latex/lm/ot1lmr.fd
 File: ot1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
@@ -1835,31 +1883,31 @@ File: ot1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 File: mt-cmr.cfg 2013/05/19 v2.2 microtype config. file: Computer Modern Roman 
 (RS)
 )
-LaTeX Font Info:    Trying to load font information for OML+lmm on input line 5
-6.
+LaTeX Font Info:    Trying to load font information for OML+lmm on input line 6
+0.
 
 (/usr/share/texmf/tex/latex/lm/omllmm.fd
 File: omllmm.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 
-56.
+60.
 
 (/usr/share/texmf/tex/latex/lm/omslmsy.fd
 File: omslmsy.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 
-56.
+60.
 
 (/usr/share/texmf/tex/latex/lm/omxlmex.fd
 File: omxlmex.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <10> on input line 56.
+(Font)              <10> on input line 60.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <7> on input line 56.
+(Font)              <7> on input line 60.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <5> on input line 56.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 56.
+(Font)              <5> on input line 60.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 60.
 
 
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsa.fd
@@ -1868,7 +1916,7 @@ File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 (/usr/share/texlive/texmf-dist/tex/latex/microtype/mt-msa.cfg
 File: mt-msa.cfg 2006/02/04 v1.1 microtype config. file: AMS symbols (a) (RS)
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 56.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 60.
 
 
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsb.fd
@@ -1877,22 +1925,11 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 (/usr/share/texlive/texmf-dist/tex/latex/microtype/mt-msb.cfg
 File: mt-msb.cfg 2005/06/01 v1.0 microtype config. file: AMS symbols (b) (RS)
 )
-Overfull \hbox (66.0pt too wide) in paragraph at lines 56--56
+Overfull \hbox (66.0pt too wide) in paragraph at lines 60--60
 [][]  
  []
 
 (./sections/1_introduction.tex
-Underfull \hbox (badness 1107) in paragraph at lines 4--5
-\TU/TimesNewRoman(0)/m/n/10 specifications, making code generation one of the m
-ost
- []
-
-
-Underfull \hbox (badness 3138) in paragraph at lines 12--13
-[]\TU/TimesNewRoman(0)/m/n/10 The results reveal a clear separation between cod
-e-
- []
-
 (/usr/share/texlive/texmf-dist/tex/latex/microtype/mt-TU-empty.cfg
 File: mt-TU-empty.cfg 2021/06/22 v1.1 microtype config. file: fonts with nonsta
 ndard glyph set (RS)
@@ -1908,231 +1945,136 @@ Package fancyhdr Warning: \headheight is too small (28.0pt):
 
 
 ]
-Underfull \hbox (badness 4832) in paragraph at lines 21--22
-[]\TU/TimesNewRoman(0)/m/n/10 A controlled comparison between general-purpose
+Underfull \hbox (badness 7451) in paragraph at lines 19--20
+[]\TU/TimesNewRoman(0)/m/n/10 An analysis of \TU/TimesNewRoman(0)/m/it/10 self-
+error detection\TU/TimesNewRoman(0)/m/n/10 , investigating
  []
 
 
-Underfull \hbox (badness 4569) in paragraph at lines 22--23
-[]\TU/TimesNewRoman(0)/m/n/10 An investigation of the complementarity between
+Underfull \hbox (badness 10000) in paragraph at lines 21--22
+[]\TU/TimesNewRoman(0)/m/n/10 A specialized SLM-based detector trained with
  []
 
-) (./sections/2_related_work.tex
+
+Underfull \hbox (badness 1038) in paragraph at lines 21--22
+\TU/TimesNewRoman(0)/m/n/10 nations, together with an analysis of how different
+
+ []
+
+) (./sections/2_related_work.tex) (./sections/3_methodology.tex [2] [3]
+Package hyperref Info: bookmark level for unknown algorithm defaults to 0 on in
+put line 41.
+
+Underfull \hbox (badness 2478) in paragraph at lines 66--67
+[]\TU/TimesNewRoman(0)/m/n/10 Table [][]1[][] summarizes the operational defini
+tions used
+ []
+
+[4]) (./sections/4_experimental_setup.tex [5] [6]
+Underfull \hbox (badness 10000) in paragraph at lines 132--132
+[]|\TU/TimesNewRoman(0)/b/n/10 Diagnostic
+ []
+
+
+Underfull \hbox (badness 5050) in paragraph at lines 134--134
+[]|\TU/TimesNewRoman(0)/m/n/10 Name and bind-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 137--137
+[]|\TU/TimesNewRoman(0)/m/n/10 Call and argu-
+ []
+
+
+Underfull \hbox (badness 1748) in paragraph at lines 140--140
+[]|\TU/TimesNewRoman(0)/m/n/10 Type consistency
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 143--143
+[]|\TU/TimesNewRoman(0)/m/n/10 Attribute, index-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 146--146
+[]|\TU/TimesNewRoman(0)/m/n/10 Optional-value
+ []
+
+) (./sections/5_1_rq1.tex
+File: figures/code_generation_results.pdf Graphic file (type pdf)
+<use figures/code_generation_results.pdf>
+ [7]) (./sections/5_2_rq2.tex
+Underfull \hbox (badness 1565) in paragraph at lines 266--1
+[]\TU/TimesNewRoman(0)/m/n/10 In summary, the evaluated models generally produc
+e
+ []
+
+
+Underfull \hbox (badness 1137) in paragraph at lines 4--5
+\TU/TimesNewRoman(0)/m/n/10 In the table  [][]6[][], the error detection perfor
+mance of the
+ []
+
+
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
-
-Underfull \hbox (badness 4673) in paragraph at lines 8--9
-[][][]\TU/TimesNewRoman(0)/m/n/10 Lee et al.[][] ([][]2025[][]) survey code-gen
-eration hallucina-
- []
-
-
-Underfull \hbox (badness 1609) in paragraph at lines 8--9
-\TU/TimesNewRoman(0)/m/n/10 hallucination violates the language grammar; a runt
-ime
- []
-
-[2]
-Underfull \hbox (badness 10000) in paragraph at lines 22--23
-[]\TU/TimesNewRoman(0)/m/n/10 CodeHalu operationalizes this idea with dynamic,
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 24--25
-[]\TU/TimesNewRoman(0)/m/n/10 The closest detector-oriented comparison is [][]A
-n-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 24--25
-\TU/TimesNewRoman(0)/m/n/10 driushchenko et al.[][] ([][]2026[][]), who constru
-ct line-level
- []
-
-
-Underfull \hbox (badness 1852) in paragraph at lines 24--25
-\TU/TimesNewRoman(0)/m/n/10 hallucination annotations and train a lightweight T
-rans-
- []
-
-
-Underfull \hbox (badness 1259) in paragraph at lines 24--25
-\TU/TimesNewRoman(0)/m/n/10 code, rather than locating hallucinated lines, and 
-evalu-
- []
-
-
-Underfull \hbox (badness 1189) in paragraph at lines 24--25
-\TU/TimesNewRoman(0)/m/n/10 ates the role of specialized small language models 
-and
- []
-
-
-Underfull \hbox (badness 5077) in paragraph at lines 26--26
-[]\TU/TimesNewRoman(0)/b/n/12 Specialized critics and rationale-based
- []
-
-) (./sections/3_methodology.tex [3]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
-
-Underfull \hbox (badness 1194) in paragraph at lines 70--71
-\TU/TimesNewRoman(0)/m/n/10 already returned the entry-point function definitio
-n. For
- []
-
-[4]
-Package microtype Info: Loading generic protrusion settings for font family
-(microtype)             `lmtt' (encoding: TU).
-(microtype)             For optimal results, create family-specific settings.
-(microtype)             See the microtype manual for details.
- [5]
-Underfull \hbox (badness 1102) in paragraph at lines 206--207
-[]\TU/TimesNewRoman(0)/m/n/10 Python compilation, implemented with the language
-’s
- []
-
-[6]
-Underfull \hbox (badness 2990) in paragraph at lines 208--209
-[]\TU/TimesNewRoman(0)/m/n/10 Pyright is a standards-based static type checker 
-for
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 208--209
-\TU/lmtt/m/n/10 --outputjson --level error --pythonversion
- []
-
-
-Underfull \hbox (badness 1057) in paragraph at lines 208--209
-\TU/lmtt/m/n/10 reportUndefinedVariable\TU/TimesNewRoman(0)/m/n/10 , \TU/lmtt/m
-/n/10 reportUnboundVariable\TU/TimesNewRoman(0)/m/n/10 ,
- []
-
-
-Underfull \hbox (badness 1057) in paragraph at lines 208--209
-\TU/lmtt/m/n/10 reportPossiblyUnboundVariable\TU/TimesNewRoman(0)/m/n/10 , \TU/
-lmtt/m/n/10 reportCallIssue\TU/TimesNewRoman(0)/m/n/10 ,
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 208--209
-\TU/lmtt/m/n/10 reportArgumentType\TU/TimesNewRoman(0)/m/n/10 , \TU/lmtt/m/n/10
- reportAssignmentType\TU/TimesNewRoman(0)/m/n/10 ,
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 208--209
-\TU/lmtt/m/n/10 reportAttributeAccessIssue\TU/TimesNewRoman(0)/m/n/10 , \TU/lmt
-t/m/n/10 reportIndexIssue\TU/TimesNewRoman(0)/m/n/10 ,
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 208--209
-\TU/lmtt/m/n/10 reportOperatorIssue\TU/TimesNewRoman(0)/m/n/10 , \TU/lmtt/m/n/1
-0 reportReturnType\TU/TimesNewRoman(0)/m/n/10 ,
- []
-
-
-Underfull \hbox (badness 1057) in paragraph at lines 208--209
-\TU/lmtt/m/n/10 reportOptionalCall\TU/TimesNewRoman(0)/m/n/10 , \TU/lmtt/m/n/10
- reportOptionalMemberAccess\TU/TimesNewRoman(0)/m/n/10 ,
- []
-
-
-Underfull \hbox (badness 1057) in paragraph at lines 208--209
-\TU/lmtt/m/n/10 reportOptionalOperand\TU/TimesNewRoman(0)/m/n/10 , \TU/lmtt/m/n
-/10 reportOptionalSubscript\TU/TimesNewRoman(0)/m/n/10 ,
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 208--209
-\TU/lmtt/m/n/10 reportOptionalIterable\TU/TimesNewRoman(0)/m/n/10 ,
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 208--209
-\TU/lmtt/m/n/10 reportOptionalContextManager\TU/TimesNewRoman(0)/m/n/10 ,
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 208--209
-\TU/lmtt/m/n/10 reportOptionalEnter\TU/TimesNewRoman(0)/m/n/10 , \TU/lmtt/m/n/1
-0 reportGeneralTypeIssues\TU/TimesNewRoman(0)/m/n/10 ,
- []
-
-[7]) (./sections/4_1_rq1.tex [8]) (./sections/4_2_rq2.tex
-Underfull \hbox (badness 1721) in paragraph at lines 10--11
-[]\TU/TimesNewRoman(0)/m/n/10 Detection behavior is strongly class-dependent. F
-unc-
- []
-
-[9] [10]) (./sections/4_3_rq3.tex
-Underfull \hbox (badness 4634) in paragraph at lines 54--1
-[]\TU/TimesNewRoman(0)/b/n/10 Answer to RQ2. \TU/TimesNewRoman(0)/m/n/10 SLMs e
-xhibit heterogeneous and
- []
-
-
+ [8]
+[9]) (./sections/5_3_rq3.tex
 Underfull \hbox (badness 4713) in paragraph at lines 1--1
 []\TU/TimesNewRoman(0)/b/n/12 RQ3: To what extent can specialized
  []
 
-File: figures/confusion_matrices.pdf Graphic file (type pdf)
-<use figures/confusion_matrices.pdf>
+[10]) (./sections/5_4_rq4.tex
+Overfull \hbox (31.03223pt too wide) in paragraph at lines 10--18
+ [][] 
+ []
 
+) (./sections/5_5_rq5.tex
+File: figures/rq5_runtime_venn.pdf Graphic file (type pdf)
+<use figures/rq5_runtime_venn.pdf>
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <8> on input line 52.
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <6> on input line 52.
+) (./sections/5_6_rq6.tex [11])
+(./sections/5_7_rq7.tex
+Underfull \vbox (badness 1158) has occurred while \output is active []
+
+ [12])
+(./sections/6_threats.tex [13]) (./sections/7_conclusion.tex [14]
+Underfull \hbox (badness 2556) in paragraph at lines 13--14
+[]\TU/TimesNewRoman(0)/m/n/10 Finally, the specialized hallucination-detection 
+model,
+ []
+
+) (./main.bbl [15]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
+Package microtype Info: Loading generic protrusion settings for font family
+(microtype)             `lmtt' (encoding: TU).
+(microtype)             For optimal results, create family-specific settings.
+(microtype)             See the microtype manual for details.
 
-Underfull \hbox (badness 1014) in paragraph at lines 17--18
-\TU/TimesNewRoman(0)/m/n/10 the training objective changes the detector profile
-. Best
- []
-
-[11]
-Underfull \hbox (badness 1303) in paragraph at lines 25--26
-[]\TU/TimesNewRoman(0)/m/n/10 Syntax deserves separate discussion. The class is
- ex-
- []
-
-[12]) (./sections/4_4_rq4.tex
-Underfull \hbox (badness 1661) in paragraph at lines 31--1
-\TU/TimesNewRoman(0)/m/n/10 training yields more balanced performance across er
-ror
- []
-
-
-Underfull \hbox (badness 1824) in paragraph at lines 8--9
-\TU/TimesNewRoman(0)/m/n/10 reached 75.5% Accuracy, 51.0% Macro-F1, and 47.7%
- []
-
-) (./sections/5_conclusion.tex) (./main.bbl
-Underfull \vbox (badness 3128) has occurred while \output is active []
-
- [13]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
-
-Underfull \hbox (badness 1360) in paragraph at lines 156--159
+Underfull \hbox (badness 1360) in paragraph at lines 133--136
 []\TU/TimesNewRoman(0)/m/n/10 Python Software Foundation (2026).  Built-in func
 tion
  []
 
-) [14] (./main.aux)
+) [16] (./main.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
  ***********
 Package rerunfilecheck Info: File `main.out' has not changed.
-(rerunfilecheck)             Checksum: 48FA45B3B88CD3E33D3ACB1EA07427A2;6453.
+(rerunfilecheck)             Checksum: A5864C3F788B583834E6962788954875;9208.
  ) 
 Here is how much of TeX's memory you used:
- 31830 strings out of 470190
- 635351 string characters out of 5478998
- 1130416 words of memory out of 5000000
- 59798 multiletter control sequences out of 15000+600000
- 644282 words of font info for 132 fonts, out of 8000000 for 9000
+ 32595 strings out of 470190
+ 647978 string characters out of 5478998
+ 1151325 words of memory out of 5000000
+ 60523 multiletter control sequences out of 15000+600000
+ 652317 words of font info for 144 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 103i,16n,131p,1834b,903s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 103i,15n,131p,1573b,901s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
-Output written on main.xdv (14 pages, 812380 bytes).
+Output written on main.xdv (16 pages, 936420 bytes).

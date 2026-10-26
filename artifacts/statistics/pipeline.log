@@ -1,0 +1,7 @@
+Statistical pipeline completed successfully.
+Commit: 6fdcacd02ab08bd47c1fa2013e41c77db99d918f
+Seed: 20260920
+Bootstrap/permutation resamples: 10000
+Validated RQ1: 13 models x 563 paired tasks.
+Validated RQ2/RQ3: 3729 rows in 113 task clusters.
+Unavailable optional inputs: /mnt/ssd/HalluCode/results/phase6_local_tools/generation_with_tools.jsonl, /mnt/ssd/HalluCode/results/phase7_local_tools/classification_with_tools.jsonl

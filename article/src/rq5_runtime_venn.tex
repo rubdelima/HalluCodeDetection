@@ -1,0 +1,23 @@
+\documentclass[tikz,border=5pt]{standalone}
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+
+\begin{document}
+\begin{tikzpicture}[scale=1.18, every node/.style={align=center,font=\small}]
+  \draw[black!45, line width=0.7pt] (-3.65,-3.40) rectangle (5.55,3.30);
+  \filldraw[fill=blue!55, fill opacity=0.25, draw=blue!60!black, line width=0.9pt] (-1.35,0.65) circle (2.05);
+  \filldraw[fill=orange!65, fill opacity=0.25, draw=orange!65!black, line width=0.9pt] (1.35,0.65) circle (2.05);
+  \filldraw[fill=green!55, fill opacity=0.25, draw=green!55!black, line width=0.9pt] (0,-0.90) circle (2.05);
+  \node[font=\bfseries\normalsize] at (-1.35,2.98) {$S$};
+  \node[font=\bfseries\normalsize] at (1.35,2.98) {$P$};
+  \node[font=\bfseries\normalsize] at (0,-3.18) {$C$};
+  \node at (-2.55,0.85) {$\{S\}$\\\textbf{8.49\%}\\362};
+  \node at (2.55,0.85) {$\{P\}$\\\textbf{0.59\%}\\25};
+  \node at (0,-2.50) {$\{C\}$\\\textbf{0.42\%}\\18};
+  \node at (0,1.60) {$\{S,P\}$\\\textbf{0.40\%}\\17};
+  \node at (-1.48,-0.82) {$\{S,C\}$\\\textbf{4.78\%}\\204};
+  \node at (1.48,-0.82) {$\{P,C\}$\\\textbf{3.42\%}\\146};
+  \node at (0,0.02) {$\{S,P,C\}$\\\textbf{4.45\%}\\190};
+  \node at (4.42,0.05) {$\{\}$\\\textbf{77.45\%}\\3,304};
+\end{tikzpicture}
+\end{document}

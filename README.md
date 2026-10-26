@@ -206,6 +206,33 @@ Outputs
 - Base dataset results: `results_dir/dataset_base.json`
 - Judge dataset results: `results_dir/dataset_judge.jsonl`
 
+Reproduce Statistical Analyses
+------------------------------
+
+The SIGSOFT-oriented analysis has one deterministic entry point. It reads the
+immutable raw experiment outputs, validates model/task pairing and duplicate
+handling, and regenerates effects, confidence intervals, tests, and adjusted
+p-values:
+
+```bash
+uv sync
+uv run scripts/run_statistical_analysis.py --config config_phase3_balanced.yaml
+uv run scripts/check_article_references.py
+```
+
+Outputs are written to `artifacts/statistics/`, including CSV tables for RQ1--RQ4,
+generated LaTeX summaries, input SHA-256 hashes, package versions, the analysis
+seed, and a validation report. The analysis uses seed `20260920` and 10,000
+bootstrap/permutation resamples. See `artifacts/manifest.md` for the mapping from
+each raw file to each RQ and manuscript table, and
+`artifacts/statistical_audit.md` for the decision matrix and multiplicity
+families.
+
+The optional local-model Phase-6/Phase-7 raw files live on the external SSD
+paths documented in the manifest. If they are not mounted, the pipeline still
+reproduces all available analyses and explicitly marks local tool-assisted
+inference as blocked rather than deriving statistics from rounded paper values.
+
 Notes
 -----
 

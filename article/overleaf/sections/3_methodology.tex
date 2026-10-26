@@ -1,0 +1,116 @@
+\section{Methodology}
+
+This study focuses on investigating the capabilities of SLMs across various lines of hallucination, from generating valid code to verifying code, and how factors such as specialization and static analysis assistance can impact the classification performed by these models, and finally, how these models compare to larger models in these tasks.
+
+The main experimental factors in this study are the model evaluated, the specialization strategy, and the availability of feedback from static tools. We apply the same protocol across all analyses, using the same programming tasks, error taxonomy, prompt structures, automatic output extraction scheme, and tool-derived feedback.
+
+For error classification, the model uses only the task description and target code, without labels or execution results. The classification is multi-label, since a code can exhibit more than one type of error; for example, a runtime error and, even if there were no runtime error, a functional error. In this analysis, we verified the model's ability to detect its own errors and those of other models.
+
+The study is organized around seven research questions:
+
+\begin{itemize}
+
+\item \textbf{RQ1:} To what extent can SLMs produce valid code, and what are the main hallucination problems in the generated code?
+\item \textbf{RQ2:} To what extent can SLMs correctly identify errors in code?
+\item \textbf{RQ3:} To what extent can specialized SLMs improve error detection in code?
+\item \textbf{RQ4:} How do static analysis techniques compare to SLMs in detecting errors in generated code?
+\item \textbf{RQ5:} How does feedback from static analysis affect the ability of language models to detect errors in generated code?
+\item \textbf{RQ6:} How does an iterative feedback loop from static analysis affect the ability of language models to generate correct code?
+\item \textbf{RQ7:} How do SLMs compare to substantially larger language models in terms of code generation, error detection, and tool-assisted configurations?
+\end{itemize}
+
+\subsection{Benchmark and Unit of Analysis}
+For this study, we used several models to generate code to perform a specific programming task. As a basis, we used the EvalPlus benchmark~\citep{liu2023evalplus}, which extends the test case sets of HumanEval~\citep{chen2021humaneval} and MBPP~\citep{austin2021mbpp}, totaling 563 programming tasks. We used all benchmark tasks uniformly, without separating them by repository subtype, since both have executable function-level tasks in Python and reinforced test sets under a common evaluation structure.
+
+Each task includes a natural-language specification describing the required functionality, including algorithmic problems, numerical operations, and data structure manipulation. This treats each task as an independent unit of analysis. For each task, the models follow a protocol for the code output so that a test bench evaluates the generated code and, from its execution, determines the type of hallucination, if any. The results serve as evidence for comparing code-generation capabilities and as a data source the models will use to classify the code.
+
+\subsection{Ground Truth and Error Classification}
+
+In this work, \emph{Code Hallucination} refers to the phenomenon in which a model produces plausible but incorrect code, observable at different execution levels, as shown in \citet{pavel2025hallucination}, \citet{lee2025hallucination}, and \citet{dou2025whatswrong}.\emph{Syntax Error} refers to hallucinations about the language's grammatical structure that produce syntax errors and prevent compilation.\emph{Runtime Error} is a hallucination in which the model makes mistakes in execution logic and specific code knowledge, leading to failures during execution.\emph{Functional Error} is a hallucination that deviates from functional requirements and can be detected through manual checks or automated tests, and it can be dangerous because it can be subtle enough to go unnoticed in poorly controlled environments.
+
+Ground truth is determined from the compilation, execution, and result of the code in the established test suite, as presented in the Algorithm~\ref{alg:ground_truth}. Labels are accumulated across the test cases of a given task, allowing \emph{Rundown Errors} and \emph{Functional Errors} to occur simultaneously, depending on the test-case results.
+
+Code with \emph{Syntax Errors} is unique because, since the code fails at the start of execution, it is impossible to determine through execution whether other error levels exist in the code. An important point is that code marked as a syntax error should not always be treated as a deviation from the code's grammar; it can also be a deviation from the request, with the model deviating from the established output rule, providing an output that is outside the specification of the extraction made by the code. Although it is possible to manually retrieve the model's response in some of these cases, to maintain methodological rigor and remain on the same line of execution, we decided to mark this type of hallucination, since the definition of \emph{Syntax Hallucination} refers to the model's difficulty with the language's grammar, and the model's output does not follow the requested grammar.
+
+The compilable code is executed in different tests within the set, with a maximum execution time. Tests classified as \emph{Runtime Error} are those where the model failed to understand the code, produced invalid elements or operations that return a specific error, or failed in the execution logic, causing the code to exceed the time limit. On the other hand, \emph{Functional Error} refers to errors where the code completes execution, but the result differs from expectations, indicating the model failed to implement all functional requests.
+
+Finally, code classified as \emph{Correct} passes all requested test cases without errors. This is not a formal proof of correctness for all possible inputs, but only that, for the test set in question, all criteria are well met. Therefore, it does not overlap with the other classes. In other words, although our classification is multi-label, only the \emph{Runtime Error} and \emph{Functional Error} classes can have an overlap.
+
+
+\begin{algorithm}[H]
+\caption{Execution-based ground-truth labeling procedure}
+\label{alg:ground_truth}
+\begin{algorithmic}[1]
+\Require Generated candidate source and EvalPlus tests
+\Ensure Set of outcome labels $L$
+\State $L \gets \emptyset$
+\If{candidate does not compile}
+    \State $L \gets L \cup \{\text{Syntax Error}\}$
+    \State \Return $L$
+\EndIf
+\For{each test case}
+    \State execute candidate
+    \If{execution raises an exception or exceeds the timeout}
+        \State $L \gets L \cup \{\text{Runtime Error}\}$
+    \ElsIf{observed output $\neq$ expected output}
+        \State $L \gets L \cup \{\text{Functional Error}\}$
+    \EndIf
+\EndFor
+\If{$L = \emptyset$}
+    \State $L \gets \{\text{Correct}\}$
+\EndIf
+\State \Return $L$
+\end{algorithmic}
+\end{algorithm}
+
+Table~\ref{tab:error_types} summarizes the operational definitions used throughout the study.
+
+\begin{table}[htbp]
+\centering
+\caption{Operational outcome categories used in the study}
+\label{tab:error_types}
+\begin{tabular}{@{}p{0.24\columnwidth}@{}p{0.76\columnwidth}@{}}
+\toprule
+\textbf{Outcome} & \textbf{Operational definition} \\
+\midrule
+Syntax Error &
+The candidate source cannot be successfully compiled after response normalization. \\
+\midrule
+Runtime Error &
+The candidate compiles, but execution raises an exception, exceeds the timeout, or otherwise fails during a test case. \\
+\midrule
+Functional Error &
+The candidate executes without a Runtime Error for a test case but produces an output different from the expected result. \\
+\midrule
+Correct &
+The candidate compiles, produces no Runtime Error, and returns the expected result for every available test case. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Evaluation Metrics}
+
+To measure performance on the code generation task, we used the pass@1 metric, the proportion of tasks in which all tests were correct, relative to the total number of tasks. The other hallucination class metrics are the sets of tasks marked with errors, relative to the total number of tasks. The evaluation does not consider partial success; that is, even if a task has only one test case with an error, we treat the entire generated code as a hallucination because the model deviated from the task.
+
+For error detection, we independently analyzed how the model classified the code in each class. Because of this independence, a prediction may be correct for one class while simultaneously introducing an error in another. For example, if the reference contains only \emph{Runtime Error} and the model predicts the classes \emph{Runtime Error} and \emph{Functional Error}, the prediction accounts for a true positive for \emph{Runtime Error} and a false positive for \emph{Functional Error}.
+
+From the class-level analysis, we verified traditional metrics such as Precision, Recall, and F1 for each class. Recall is the most used metric in this work for analyzing each class, as it indicates the model's ability to identify real hallucination cases in that class. We mainly use the F1-score to balance precision and recall.
+
+For a more global analysis, we used accuracy metrics calculated on the exact set; that is, in multi-label scenarios, accuracy occurs when all predicted and real classes match. However, because the dataset is highly unbalanced and to better evaluate class behavior overall, we also used macro metrics, such as Macro F1 and Macro Recall, which average the metrics across classes.
+
+Finally, Self-error detection is a subset of the detection inferences performed, but attributed only to the models. These classes are interesting for observing how models detect their own hallucinations, but may have a problem when compared with others, because since they are not sets from others, they may have a different number of examples and difficulty in classifying classes; it only points out how well the model is able to detect flaws in its own code.
+
+\subsection{Statistical Analysis}
+% i need to improve this subsection
+We apply the statistical analyses used in this work to each research question, treating the programming task as the independent unit of analysis, and the procedures correspond to the conditions evaluated in these tasks. We apply inferential tests only when they directly support a comparison required by the respective research question.
+
+For research question 3, we used a task-level paired bootstrap to verify whether specialization alters the ability to detect errors relative to the same model before fine-tuning, preserving task pairings and constructing a confidence interval for the observed difference. This technique uses several resamplings, paired to recalculate the difference between the specialized model and the base model.
+
+For research question 6, we used a two-tailed McNemar exact test, which tests whether two conditions applied to the same units have the same probability of a positive result. To obtain this binary classification, we labeled all hallucination cases as Not Correct. This technique aims to verify whether the feedback protocol systematically alters the proportion of correct solutions compared to the initial protocol. If the null hypothesis holds, the changes should be proportional across groups. However, this does not allow us to conclude that the effect was caused solely by static analysis; it may be due to other variables, such as model iteration.
+
+\subsection{Specialized Error Detectors}
+To perform model specialization, we used a process based on execution-based labeling. As a complement, a model was used to generate the explanation of the labeling, in which, for syntax errors, it was indicated exactly where the error occurred; for execution and functionality errors, the model was informed of the test cases in which the model erred, with the expected output and the output obtained, in addition to the code execution errors, if any. In this way, the label is obtained deterministically, while the model provides the explanation.
+
+The motivation for explaining the labeling is based on previous work. For example, \citep{hsieh-etal-2023-distilling} shows that using rationales provides an additional supervision signal for training smaller models, improving performance compared with label-only supervision.
+
+To verify each model's ability to detect hallucinations, we divide the data into three subsets: training, validation, and testing. All comparisons between models are performed only on the test set, and the same applies to untrained models, to provide a fairer basis for comparison.

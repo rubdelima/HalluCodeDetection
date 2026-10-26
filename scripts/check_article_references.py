@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Statically validate citations in article/sections against article/refs.bib."""
+"""Check article citation keys and report unused article/refs.bib entries."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SECTIONS = PROJECT_ROOT / "article" / "sections"
+DEFAULT_MAIN = PROJECT_ROOT / "article" / "main.tex"
 DEFAULT_BIB = PROJECT_ROOT / "article" / "refs.bib"
 
 CITE_COMMANDS = {
@@ -137,12 +138,13 @@ def skip_whitespace(text: str, cursor: int) -> int:
     return cursor
 
 
-def parse_citations(path: Path) -> tuple[list[Citation], list[Issue], str, list[tuple[int, int]]]:
+def parse_citations(path: Path) -> tuple[list[Citation], list[Issue], str, list[tuple[int, int]], bool]:
     original = path.read_text(encoding="utf-8")
     text = strip_verbatim(strip_tex_comments(original))
     citations: list[Citation] = []
     issues: list[Issue] = []
     citation_spans: list[tuple[int, int]] = []
+    nocite_all = False
 
     for match in COMMAND_PATTERN.finditer(text):
         command = match.group(1)
@@ -194,6 +196,7 @@ def parse_citations(path: Path) -> tuple[list[Citation], list[Issue], str, list[
                 issues.append(Issue("error", path, key_line, f"empty key in \\{command}"))
                 continue
             if command == "nocite" and key == "*":
+                nocite_all = True
                 continue
             if raw_key != key:
                 issues.append(Issue(
@@ -207,7 +210,7 @@ def parse_citations(path: Path) -> tuple[list[Citation], list[Issue], str, list[
                 ))
                 continue
             citations.append(Citation(key, path, key_line))
-    return citations, issues, text, citation_spans
+    return citations, issues, text, citation_spans, nocite_all
 
 
 def find_entry_end(text: str, start: int, opening: str) -> int | None:
@@ -320,21 +323,28 @@ def validate(
     bib_path: Path,
     *,
     check_manual: bool = True,
+    main_path: Path | None = None,
 ) -> tuple[list[Issue], int, int, int]:
     issues: list[Issue] = []
     if not sections_dir.is_dir():
         return [Issue("error", sections_dir, 1, "sections directory does not exist")], 0, 0, 0
     if not bib_path.is_file():
         return [Issue("error", bib_path, 1, "bibliography file does not exist")], 0, 0, 0
+    if main_path is not None and not main_path.is_file():
+        return [Issue("error", main_path, 1, "main TeX file does not exist")], 0, 0, 0
 
     bib_entries, bib_issues = parse_bibliography(bib_path)
     issues.extend(bib_issues)
     citations: list[Citation] = []
     tex_files = sorted(sections_dir.rglob("*.tex"))
+    if main_path is not None and main_path not in tex_files:
+        tex_files.insert(0, main_path)
+    nocite_all = False
     for path in tex_files:
-        found, tex_issues, text, spans = parse_citations(path)
+        found, tex_issues, text, spans, file_nocite_all = parse_citations(path)
         citations.extend(found)
         issues.extend(tex_issues)
+        nocite_all |= file_nocite_all
         if check_manual:
             issues.extend(manual_citation_issues(path, text, spans))
 
@@ -358,10 +368,10 @@ def validate(
 
     cited_keys = {citation.key for citation in citations}
     for key, line in bib_entries.items():
-        if key not in cited_keys:
+        if not nocite_all and key not in cited_keys:
             issues.append(Issue(
                 "warning", bib_path, line,
-                f"BibTeX entry {key!r} is not cited in article/sections",
+                f"BibTeX entry {key!r} is not cited in the article",
             ))
 
     issues.sort(key=lambda item: (str(item.path), item.line, item.severity, item.message))
@@ -377,9 +387,10 @@ def display_path(path: Path) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Check article/sections citation keys against article/refs.bib.",
+        description="Find missing citation keys and unused BibTeX entries in the article.",
     )
     parser.add_argument("--sections", type=Path, default=DEFAULT_SECTIONS)
+    parser.add_argument("--main", type=Path, default=DEFAULT_MAIN)
     parser.add_argument("--bib", type=Path, default=DEFAULT_BIB)
     parser.add_argument(
         "--no-manual-citation-check",
@@ -397,6 +408,7 @@ def main() -> int:
         args.sections,
         args.bib,
         check_manual=not args.no_manual_citation_check,
+        main_path=args.main,
     )
     for issue in issues:
         print(
@@ -406,9 +418,12 @@ def main() -> int:
 
     errors = sum(issue.severity == "error" for issue in issues)
     warnings = sum(issue.severity == "warning" for issue in issues)
+    missing = sum("is missing from" in issue.message for issue in issues)
+    unused = sum("is not cited in the article" in issue.message for issue in issues)
     print(
         f"Checked {tex_count} TeX files, {citation_count} citation uses, "
-        f"and {entry_count} BibTeX entries: {errors} error(s), {warnings} warning(s)."
+        f"and {entry_count} BibTeX entries: {missing} missing citation(s), "
+        f"{unused} unused entry/entries, {errors} error(s), {warnings} warning(s)."
     )
     return 1 if errors or (args.strict and warnings) else 0
 

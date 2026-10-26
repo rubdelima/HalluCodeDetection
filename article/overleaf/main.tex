@@ -1,0 +1,84 @@
+% !TeX program = xelatex
+% !BIB program = bibtex
+\makeatletter
+\def\input@path{{template/}}
+\makeatother
+
+\documentclass{sbc2019}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage[table]{xcolor}
+\usepackage{tikz}
+\usepackage{fontawesome}
+\usepackage{academicons}
+\usepackage{hyperref}
+\usepackage[bottom]{footmisc}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{comment}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc,fit}
+
+\definecolor{darkblue}{rgb}{0.0,0.0,0.0}
+\hypersetup{
+  colorlinks,
+  breaklinks,
+  linkcolor=darkblue,
+  urlcolor=darkblue,
+  anchorcolor=darkblue,
+  citecolor=darkblue
+}
+
+% Journal metadata for the submission version. Volume, issue, year, and DOI
+% are intentionally omitted because they are assigned during publication.
+\jid{JSERD}
+\jtitle{Journal of Software Engineering Research and Development}
+\copyrightstatement{This work is licensed under a Creative Commons Attribution 4.0 International License}
+
+\begin{document}
+
+\title[HalluCodeDetection]{HalluCodeDetection: Detecting Hallucinations in Code Generation}
+
+% TODO before submission: include the author's ORCID, institutional affiliation
+% (using its official English name), and contact email in this affiliation block.
+\author[de Lima]{
+  \affil{\textbf{Rubens Nascimento de Lima}}
+}
+
+\begin{frontmatter}
+\maketitle
+
+\begin{abstract}
+\textbf{Abstract}
+%Small Language Models (SLMs) have gained increasing attention for code-generation tasks because their reduced computational requirements enable local execution, offering practical advantages in deployment cost, privacy, and data control. However, code generation remains susceptible to hallucinations, and this limitation may be particularly relevant for smaller models operating with more constrained capacity. More importantly, producing code and recognizing when generated code is incorrect are distinct capabilities that remain insufficiently understood for SLMs. In this work, we investigate whether SLMs can act not only as code generators but also as hallucination detectors, whether specialized training can improve this capability, and how their predictions compare with and benefit from deterministic static-analysis tools. We evaluate these questions on all 563 HumanEval+ and MBPP+ tasks from EvalPlus, using execution-based labels for Syntax, Runtime, Functional, and Correct outcomes. SLMs generate correct solutions for up to 80.8\% of the tasks, reaching the same performance range as the substantially larger models evaluated in our comparison. Their predominant failures are not malformed syntax or execution crashes, but Functional hallucinations: programs that execute while deviating from the requested behavior. Error detection, however, follows a different pattern. No general-purpose model performs consistently well across all error categories, and Runtime hallucinations are particularly difficult, with the highest observed Runtime Recall reaching only 32.9\%.
+%Nevertheless, several SLMs detect more Runtime failures than Pyright, which identifies only 8.9\% of the held-out Runtime cases under our rule mapping, showing that model-based reasoning can capture failures beyond those exposed by the selected static analysis. The two approaches are complementary: compilation provides deterministic Syntax detection, while incorporating tool feedback raises Syntax Recall to nearly 100\% for most models. However, its effect on Runtime and Functional judgments remains model-dependent. Finally, specialized training substantially improves hallucination detection: an Accuracy-oriented detector gains 32.0 percentage points over its base model, while Macro-F1-oriented training produces a more balanced detector across error categories. Overall, our results show that code generation, hallucination detection, and correction are distinct capabilities, and that combining specialized SLMs with deterministic software-engineering tools provides complementary evidence for identifying failures in generated code.
+% I think some results could be reduced to adding "how my work exceeds what has already been covered in the literature"
+\end{abstract}
+
+\begin{keywords}
+Code Generation, Hallucination Detection, Specialized Fine-tuning, Small Language Models
+\end{keywords}
+\end{frontmatter}
+
+\input{sections/1_introduction}
+\input{sections/2_related_work}
+\input{sections/3_methodology}
+\input{sections/4_experimental_setup}
+
+\section{Results and Discussion}
+\label{sec:results}
+\input{sections/5_1_rq1}
+\begin{comment}
+\input{sections/5_2_rq2}
+\input{sections/5_3_rq3}
+\input{sections/5_4_rq4}
+\input{sections/5_5_rq5}
+\input{sections/5_6_rq6}
+\input{sections/5_7_rq7}
+\end{comment}
+\input{sections/6_threats.tex}
+\input{sections/7_conclusion}
+
+\bibliographystyle{apalike}
+\bibliography{refs}
+
+\end{document}

@@ -1,0 +1,230 @@
+\section{Experimental Setup}
+
+\subsection{Models and Inference Configuration}
+
+The study evaluates 10 open-source SLMs ranging from 4 to 35 billion parameters and, to provide a comparative baseline with larger models, includes 2 larger LLMs. Table ~\ref{tab:models} presents an overview of all models used in this study, organized by size.
+
+\begin{table}[htbp]
+\centering
+\caption{Models evaluated in the study.}
+\label{tab:models}
+\begin{tabular}{lc}
+\toprule
+\textbf{Model} & \textbf{Parameters} \\
+\midrule
+\multicolumn{2}{l}{\emph{Small language models}} \\
+\midrule
+Devstral Small 2 & \shortstack[c]{24B\\{\scriptsize\citep{rastogi2025devstral}}\\{\scriptsize\citep{mistralai2025devstral2}}} \\
+GLM 4.7 Flash & \shortstack[c]{30B\\{\scriptsize\citep{glm45team2025glm45}}\\{\scriptsize\citep{zai2025glm47flash}}} \\
+Gemma 3 4B & \shortstack[c]{4B\\{\scriptsize\citep{gemmateam2025gemma3}}} \\
+Gemma 4 & \shortstack[c]{\{5.1, 8, 31\}B\\{\scriptsize\citep{gemmateam2026gemma4}}} \\
+GPT-OSS 20B & \shortstack[c]{20B\\{\scriptsize\citep{openai2025gptoss}}} \\
+Muse Glimmer 30B & \shortstack[c]{30B\\{\scriptsize\citep{meta2026museglimmer}}} \\
+Ornith 1.5 35B & \shortstack[c]{35B\\{\scriptsize\citep{ornithteam2026ornith15}}} \\
+Qwen 2.5 Coder & \shortstack[c]{\{7, 32\}B\\{\scriptsize\citep{hui2024qwen25coder}}} \\
+Qwen 3 Coder 30B & \shortstack[c]{30B\\{\scriptsize\citep{yang2025qwen3}}\\{\scriptsize\citep{qwenteam2025qwen3coder}}} \\
+Qwen 3.8 27B & \shortstack[c]{27B\\{\scriptsize\citep{qwenteam2026qwen38}}} \\
+\midrule
+\multicolumn{2}{l}{\emph{Large models used for comparison}} \\
+\midrule
+DeepSeek V4.1 Flash & \shortstack[c]{552B\\{\scriptsize\citep{deepseekai2026deepseekv41flash}}} \\
+MiMo V2.5 & \shortstack[c]{310B\\{\scriptsize\citep{xiaomimimo2026mimov25}}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The SLMs used in these experiments used 4-bit quantization, enabling evaluation of larger local models within the available computational capacity. Previous empirical studies support the use of quantized models, such as~\citep{giagnorio2026quantization}, which showed that 4-bit quantization can significantly reduce memory requirements while maintaining performance close to that of corresponding full-precision models. This justification lets us expand our search for more SLMs and avoid being limited by the computational constraints of this experiment.
+
+During training, we used Glimmer 30B, Qwen 3.8 27B, and Ornith 1.5 35B to generate classification justifications. For model modification and specialization, we readjusted the Gemma 3 4B, Gemma 4 E2B, and Gemma 4 E4B models.
+
+The initial code generation experiment uses a temperature of 1.0. For all subsequent phases, we use a temperature of 0.0 to minimize sampling variability. In all evaluated conditions, support for internal Chain of Thought mechanisms was disabled.
+
+\subsection{Code Generation Experiment}
+
+In the code generation experiment, all 563 programming tasks from the EvalPlus benchmark are evaluated. All inferences include a system prompt instructing the model to act as a Python programming assistant and to return a single function implementation, depending on the task type. In HumanEval+, the model receives the function signature and is prompted to complete the function body. With MBPP+ tasks, the model is prompted to generate the complete function implementation. Models are instructed to respond without adding any supplementary information, such as explanations, tests, or usage examples.
+
+Before execution, the response is normalized for insertion into the function used by the test suite. In responses containing Markdown text, only the sections marked as Python and comprising the function body are extracted. However, if a complete function of the same type is returned, the definition established by the model is used. In cases where the output is not entirely code, or when there is no Markdown markup indicating code, the normalization procedure does not remove arbitrary natural language content that appears before or after the generated code, which may cause a \emph{Syntax Error}.
+
+\subsection{Error Detection and Self-Evaluation Experiment}
+
+For the code hallucination detection experiment, a system prompt is provided that defines the classification task and an explanation of the classes \emph{Syntax Error}, \emph{Runtime Error}, \emph{Functional Error}, and \emph{Correct}. The model is instructed to return a structured JSON containing a dictionary where the keys are the hallucination classes and the values are natural-language justifications for choosing each class. These explanations should be general and not address specific cases. The code already applied to the previous normalization process is passed alongside the system prompt.
+
+If a detector's response is malformed, we classify it as an empty structure. We adopted this methodology to prevent malformed responses from being excluded from the reported metrics and to avoid skewing the balance of the model's classifications. For example, if a model classifies only easy cases and does not respond to more complex ones, comparing only valid classifications will distort the metric. Although this approach favors sets with more negative cases, this problem is mitigated because one of the main evaluation metrics is Recall, which focuses on how many real cases were reported. Self-assessment, as a subset of evaluations, does not require an additional procedure.
+
+\subsection{Specialized Detector Training}
+
+\subsubsection{Knowledge Distillation}
+
+To train the specialized detector, we use supervised learning from execution and result verification, along with compiler execution results and invalid test outputs. In correct cases, the model is instructed that the code in question is valid for the presented task. The evaluator is instructed to agree with the label and generate only the explanation of that label, without referring to specific edge cases.
+
+Each generated solution is processed independently by different rationale-generating models, producing its own justification for the same code and reference label. This strategy aims to diversify the response explanations and reduce rationale association bias. The analyses do not evaluate the validity or quality of the rationales; they evaluate only the deterministic labels. In total, 18,579 records were produced from 6,193 generated solutions. As the
+The model generates only an explanation; it does not need to create a parser or produce structured output.
+
+\subsubsection{Dataset Partition and Class Distribution}
+
+The dataset is generally subdivided by programming task unit into training, validation, and test sets, with proportions of 65\%, 15\%, and 20\% of the total tasks, respectively. This ensures that, during training, no explanation for a given output is generated by another model or by similar code. Table~\ref{tab:dataset_split} summarizes the distribution of tasks and the number of explanations generated.
+
+\begin{table}[htbp]
+\centering
+\caption{Task-level partition of the rationale-expanded dataset.}
+\label{tab:dataset_split}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Split} & \textbf{Tasks} & \textbf{Records} \\
+\midrule
+Training & 366 & 12,078 \\
+Validation & 84 & 2,772 \\
+Test & 113 & 3,729 \\
+\midrule
+Total & 563 & 18,579 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+We divide the data using a grouped assignment process with a fixed random seed of 42. The seed orders the tasks, and a greedy algorithm attempts to divide them to preserve a stratified distribution of classes across all sets.
+
+Since the models showed positive results in code generation, most classifications belong to the class \emph{Correct}, occurring in about 72.4\% of records, while the class \emph{Syntax Error}, which had the fewest cases, accounts for only 1.5\%. It's worth noting that, because \emph{Runtime Error} and \emph{Functional Error} can co-occur, the sum of the three classes, in raw form, exceeds 100\%.
+
+The predominance of \emph{Correct} results motivated class balancing in some training processes, where the training set underwent a reduction in classes with larger records to match a set with a fixed ratio to equalize the number of records with the classes with fewer records, such as 3:3:1 and 1:1:1. However, the validation and test records remain unchanged under all circumstances.
+
+\subsubsection{Fine-Tuning and Hyperparameter Search}
+
+During training, the models are trained using simulated detection inference cases. Each sample contains 3 messages: the first is a system prompt that defines the task, the output structure, and the 4 possible classifications. The user input is the task instruction and the respective code to be evaluated, already normalized. The third input is marked as the assistant's input; that is, the target to which the model must respond, already structured as an object with the classes labeled by the execution and the justification generated by the models.
+
+To fit within the available computational resources, we train with QLoRA, 4-bit NF4 quantization, and low-rank adapters, following the LoRA approach.
+
+For hyperparameter search, the parameters and values observed in Table~\ref{tab:training_params} were used, including those specific to LoRA and other general Deep Learning training parameters. To train with the best possible configurations, we used Optuna~\citep{akiba2019optuna} with the Tree-structured Parzen Estimator sampler, multivariate sampling, and a linear-constant kernel. The search engine should converge to the group of tested hyperparameters that most closely approximates the target metric of the execution.
+
+\begin{table}[htbp]
+\centering
+\caption{Hyperparameters explored during specialized detector training.}
+\label{tab:training_params}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter} & \textbf{Values} \\
+\midrule
+LoRA rank ($r$) & \{8, 16, 32\} \\
+LoRA alpha ($\alpha$) & \{8, 16, 32\} \\
+LoRA dropout & \{0.05, 0.1\} \\
+Learning rate & \{5e-5, 1e-4\} \\
+Bias & \{none, all, lora\_only\} \\
+Epochs & \{3, 4\} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The study evaluates different optimization objectives in two rounds. One target is accuracy, which aims to train the model to correctly predict more examples in the validation set. In the Macro-F1 evaluation, we select the outputs that achieve a better F1-score per class. However, during the training cycle, before calling Optina, since it's not possible to parse the output to evaluate the loss calculation, we calculate a weight for each class token and give greater weight to these tokens in the selection.
+
+We also added other configurations, such as class balancing and excluding the class with the fewest records, which can be easily detected during static analysis. With these tools, the models achieved excellent performance on this class. The final model is selected based on the configuration that maximizes its corresponding selection metric on the validation partition. The test partition is used only after model selection for the final evaluation.
+
+\subsection{Static Analysis Configuration}
+
+To perform static analysis, we use checkers to detect errors without test cases. To investigate \emph{Syntax Error}, we use the language's built-in compiler~\citep{pythoncompile}, Pyright (version 1.1.414), for Python 3.13.15. This checker is the same one used at runtime, so it will always have the final verdict on whether the code has a syntax error, serving as an exact verification template.
+
+To detect \emph{Runtime Errors}, we use Pyright~\citep{microsoftpyright}, which, although it is not a real template, attempts to identify static conditions associated with potential runtime failures that compilation alone cannot expose. In fact, even when we run the compilation test, we cannot match the compiler's rate, so we use this tool to predict this type of error. The classes checked by the analyzer are listed in Table ~\ref{tab:pyright_runtime_groups}.
+
+\begin{table}[htbp]
+\centering
+\caption{Pyright diagnostic groups mapped to potential Runtime Errors.}
+\label{tab:pyright_runtime_groups}
+\begin{tabular}{@{}p{0.30\columnwidth}@{}p{0.64\columnwidth}@{}}
+\toprule
+\textbf{Diagnostic group} & \textbf{Examples of detected problems} \\
+\midrule
+Name and binding errors &
+Undefined, unbound, or possibly unbound variables. \\
+\midrule
+Call and argument errors &
+Invalid function calls, incompatible arguments, or invalid call signatures. \\
+\midrule
+Type consistency errors &
+Incompatible assignments, return values, general type mismatches, or invalid type arguments. \\
+\midrule
+Attribute, indexing, and operator errors &
+Invalid member access, unsupported indexing, or invalid operand combinations. \\
+\midrule
+Optional-value misuse &
+Calling, indexing, iterating over, or accessing members of values that may be \emph{None}. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Tool-Assisted Experiments}
+\label{sec:interactive_cycles}
+
+\subsubsection{Error Detection with Static Feedback}
+
+The error detection experiment with the static feedback assistant uses the same set of model responses for each of the 113 tasks in RQ2 to establish a controlled comparison of error detection based on the impact of the added content. The only variable added to this text is the static analysis feedback, while the task description, code, classification prompt, output scheme, temperature, and evaluation metrics remain unchanged.
+
+For each sample, the model receives the same system-prompt instruction, and the output from the static tools, showing how the code was analyzed in each category, is added to the user prompt. It is also added to the prompt that the tools may provide incomplete or incorrect evidence. Figure~\ref{fig:cycle_verification} illustrates the flows. As in the general detection experiment, an unparseable detector response is represented as an empty prediction set and remains in the evaluation.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.6\columnwidth}{!}{
+\begin{tikzpicture}[
+    font=\small,
+    box/.style={draw, rounded corners=2pt, align=center, minimum width=3.1cm, minimum height=0.8cm, fill=blue!5},
+    subtool/.style={draw, rounded corners=2pt, align=center, minimum width=1.5cm, minimum height=0.7cm, fill=orange!15},
+    container/.style={draw, rounded corners=3pt, fill=orange!8, minimum width=4.6cm, minimum height=1.8cm},
+    term/.style={draw, rounded corners=2pt, align=center, minimum width=3.1cm, minimum height=0.8cm, fill=gray!12},
+    arr/.style={-{Latex[length=2mm]}, thick}
+]
+\node[term] (v0) at (0,0) {Task + test code};
+\node[container] (tf) [below=6mm of v0] {};
+\node[font=\footnotesize] at ([yshift=-3mm]tf.north) {Static feedback};
+\node[subtool] at ([xshift=-1.05cm,yshift=-4.5mm]tf.center) {Compilation};
+\node[subtool] at ([xshift=1.05cm,yshift=-4.5mm]tf.center) {Pyright};
+\node[box] (v3) [below=6mm of tf] {Model classifies};
+\node[box] (v4) [below=6mm of v3] {Predicted outcomes};
+\node[term] (v5) [below=6mm of v4] {Compare with reference};
+\draw[arr] (v0)--(tf);
+\draw[arr] (tf)--(v3);
+\draw[arr] (v3)--(v4);
+\draw[arr] (v4)--(v5);
+\end{tikzpicture}
+}
+\caption{Tool-assisted error-detection protocol. Static analysis is supplied as supporting evidence before the model predicts the execution-based outcomes.}
+\label{fig:cycle_verification}
+\end{figure}
+
+\subsubsection{Iterative Code Generation with Static Feedback}
+
+The second tool-assisted experiment evaluates an iterative generation protocol in which static analysis feedback is provided in an iterative cycle. The model initially generates a candidate solution for the task and question. Immediately afterward, the model obtains task feedback through compilation and Pyright, using a short-circuit order; that is, it does not analyze a candidate with Pyright if it fails compilation.
+
+Using the tool feedback, the model must choose between adjusting the code and submitting the current code. Models have up to 5 cycles to submit code; after 5 cycles, the last candidate is chosen for execution without another model decision.
+
+It is important to remember that the feedback from static tools, which can only point out \emph{Syntax Error} and \emph{Runtime Errors}, and the test cases are not executed during this process. Figure \ref{fig:cycle_generation} shows the cycle process.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.6\columnwidth}{!}{
+\begin{tikzpicture}[
+    font=\small,
+    box/.style={draw, rounded corners=2pt, align=center, minimum width=3.1cm, minimum height=0.8cm, fill=blue!5},
+    subtool/.style={draw, rounded corners=2pt, align=center, minimum width=1.5cm, minimum height=0.7cm, fill=orange!15},
+    container/.style={draw, rounded corners=3pt, fill=orange!8, minimum width=4.6cm, minimum height=1.8cm},
+    dec/.style={draw, diamond, aspect=2.2, align=center, inner sep=1pt, fill=green!10},
+    term/.style={draw, rounded corners=2pt, align=center, minimum width=3.1cm, minimum height=0.8cm, fill=gray!12},
+    arr/.style={-{Latex[length=2mm]}, thick},
+    lbl/.style={font=\scriptsize}
+]
+\node[term] (g0) at (0,0) {Programming task};
+\node[box] (g1) [below=6mm of g0] {Model generates / revises code};
+\node[container] (tf) [below=6mm of g1] {};
+\node[font=\footnotesize] at ([yshift=-3mm]tf.north) {Static feedback};
+\node[subtool] at ([xshift=-1.05cm,yshift=-4.5mm]tf.center) {Compilation};
+\node[subtool] at ([xshift=1.05cm,yshift=-4.5mm]tf.center) {Pyright};
+\node[box] (g3) [below=6mm of tf] {Model self-review};
+\node[dec] (g4) [below=6mm of g3] {Submit?};
+\node[term] (g5) [below=6mm of g4] {Final EvalPlus evaluation};
+\draw[arr] (g0)--(g1);
+\draw[arr] (g1)--(tf);
+\draw[arr] (tf)--(g3);
+\draw[arr] (g3)--(g4);
+\draw[arr] (g4)--node[lbl,right]{yes}(g5);
+\draw[arr] (g4.east) -- ++(1.7,0) node[lbl,above,pos=0.5]{no: revise} |- (g1.east);
+\end{tikzpicture}
+}
+\caption{Tool-assisted iterative code-generation protocol. EvalPlus is applied to the final candidate and its result is not exposed to the model during generation or revision.}
+\label{fig:cycle_generation}
+\end{figure}

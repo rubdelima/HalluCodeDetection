@@ -1,0 +1,24 @@
+\subsection{RQ4: How do static-analysis techniques compare with SLMs in detecting errors in generated code?}
+\label{sec:rq4}
+
+This RQ compares the standalone detection capability of Python compilation and Pyright with the corresponding class-specific results of the language models. The comparison is restricted to the outcomes directly targeted by each technique: Python compilation for \emph{Syntax Error} and Pyright for statically detectable \emph{Runtime Error}. The static techniques do not produce predictions for \emph{Functional Error} or \emph{Correct}, so the comparison focuses on the error categories for which a direct correspondence can be established.
+
+\begin{table}[htbp]
+\centering
+\caption{Standalone static-tool detection on the held-out test split and on the complete generated set. Values report detected/reference cases and recall.}
+\label{tab:rq4_tools}
+\begin{tabular}{llrr}
+\toprule
+\textbf{Tool} & \textbf{Target} & \textbf{Test} & \textbf{Global} \\
+\midrule
+Python compile & Syntax & 17/17 (100.0\%) & 90/90 (100.0\%) \\
+Pyright & Runtime & 7/79 (8.9\%) & 45/408 (11.0\%) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Python compilation provides a clear advantage for \emph{Syntax Error}. It detects all 17 held-out Syntax cases and all 90 cases in the complete generated set. In contrast, only 6 of the 14 general-purpose SLM configurations identify at least half of the Syntax Errors, and only three exceed 75\% Syntax Recall. The median Syntax Recall among these models is approximately 41.2\%. Although some individual SLMs exhibit strong syntactic detection, most do not approach the reliability of direct compilation. These results indicate that SLMs have limited and inconsistent standalone capability for verifying syntactic validity when compared with a deterministic mechanism designed to check this property.
+
+The relationship is different for \emph{Runtime Error}. Pyright detects only 7 of the 79 held-out Runtime cases, corresponding to 8.9\% recall, and 45 of 408 cases globally, corresponding to 11.0\%. Eleven of the 14 general-purpose SLM configurations exceed Pyright's held-out Runtime Recall, with a median of approximately 14.6\%. GPT-OSS reaches the highest observed Runtime Recall at 32.9\%. Runtime detection remains difficult for the language models themselves, but most evaluated SLMs identify a larger fraction of these failures than the selected Pyright diagnostic mapping. This indicates that model-based reasoning can recognize execution-related problems that are not exposed by the static conditions captured in the evaluated Pyright configuration.
+
+The comparison therefore reveals a clear difference in the strengths of the two approaches. SLMs do not provide the same reliability as deterministic compilation for detecting syntactic failures, whereas they can provide greater coverage of Runtime failures than the static-analysis configuration evaluated in this study. Static analysis is particularly effective when the target property can be checked directly, while SLMs can contribute additional detection capability for failures that require broader reasoning about program behavior. This division of strengths motivates RQ5, which investigates whether language models can improve their own error detection when the static evidence is supplied explicitly.

@@ -1,0 +1,120 @@
+\subsection{RQ2: To what extent can SLMs correctly identify errors in generated code?}
+\label{sec:rq2}
+
+In the table ~\ref{tab:rq2_detection}, the error detection performance of the evaluated models is summarized, with Accuracy measuring whether the complete set of predicted labels matches those delivered by code execution. Furthermore, Macro-F1 assigns equal importance to the four result categories, CR, FR, RR, and SR, which denote recall for the classifications Correct, Functional Error, Runtime Error, and Syntax Error, respectively. MF1(NS) presents Macro-F1 after excluding syntax errors as a sensitivity analysis. Although the table also shows fitted and larger models, this RQ discusses only the SLMs.
+
+Analyzing the SLMs, it is noticeable that the Muse Glimmer 30B presents the best accuracy and macro-F1 results, with 73.1\% and 53.8\%, respectively, while the Gemma 4 31B presents 72.4\% and 48.5\% in the same metrics, being the second-best. However, unlike the best-performing models, the others show varied combinations in each class's aggregate performance. This difference between Accuracy and Macro-F1 indicates an imbalance: even with high performance on the most frequent error classes, performance remains weak on the less frequent ones.
+
+The two Qwen 2.5 Coder configurations illustrate this distinction. The 7B model obtains slightly higher Accuracy than the 32B model, 62.5\% compared with 60.8\%, but the 32B model reaches a substantially higher Macro-F1, 41.0\% compared with 33.7\%. The difference is primarily associated with the minority error categories: Runtime Recall increases from 2.5\% to 11.4\%, while Syntax Recall increases from 17.6\% to 76.5\%. Therefore, Accuracy alone would obscure an important difference in how these two configurations distribute their predictions across error types.
+
+Detection capability is strongly dependent on the error category. \emph{Functional Error} is recognized comparatively well by several models. Gemma 4 E4B IT reaches 86.4\% Functional Recall, Gemma 3 4B reaches 84.7\%, Gemma 3 4B IT reaches 82.0\%, Ornith 1.5 35B reaches 78.1\%, and Qwen 3.8 27B reaches 75.9\%. However, strong Functional Recall does not imply strong overall detection. Gemma 3 4B, for example, reaches 84.7\% Functional Recall but only 32.9\% Accuracy, together with 22.6\% Correct Recall and 6.3\% Runtime Recall. The model therefore recognizes many functional failures while struggling to distinguish the other outcomes.
+
+\emph{Runtime Error} is the most difficult category for the general-purpose SLMs. GPT-OSS 20B obtains the highest Runtime Recall at 32.9\%, followed by Gemma 4 E4B IT at 31.6\%, Muse Glimmer 30B at 27.0\%, GLM 4.7 Flash at 26.2\%, and Gemma 4 31B at 24.1\%. No general-purpose SLM identifies more than approximately one third of the Runtime Errors. This contrasts with Functional Error, for which several models detect more than three quarters of the reference cases. Runtime failures therefore remain a substantial limitation of model-based error detection under this protocol.
+
+\emph{Syntax Error} presents a different pattern, with substantial variation across models. GLM 4.7 Flash reaches 94.1\% Syntax Recall, followed by Gemma 4 31B at 78.4\%, Qwen 2.5 Coder 32B at 76.5\%, and GPT-OSS 20B at 72.5\%. At the opposite end, Gemma 4 E2B IT and Gemma 3 4B IT each reach only 5.9\%. Thus, unlike Runtime Error, where performance is consistently low, the ability to recognize Syntax Error is highly model-dependent.
+
+GPT-OSS provides one of the clearest examples of the separation between code generation and error detection. In RQ1, it generates a Correct solution for 79.0\% of the tasks, placing it among the strongest generators. In the detection experiment, however, it reaches only 25.1\% Accuracy and 17.5\% Correct Recall. At the same time, it obtains the highest Runtime Recall among the general-purpose SLMs and 72.5\% Syntax Recall. Its low aggregate Accuracy therefore does not reflect uniformly poor error recognition, but rather a strongly asymmetric prediction profile in which the model is particularly weak at recognizing code that is actually Correct.
+
+Because \emph{Syntax Error} is rare and can also be identified directly through deterministic compilation, Table~\ref{tab:rq2_detection} additionally reports Macro-F1 without this category. This ablation evaluates how strongly the rare Syntax class affects the aggregate macro metric. Muse Glimmer increases from 53.8\% to 61.3\%, Gemma 4 31B from 48.5\% to 55.8\%, Qwen 3.8 from 42.6\% to 48.6\%, and Qwen 2.5 Coder 7B from 33.7\% to 39.4\%. In contrast, GPT-OSS changes only from 39.0\% to 40.4\% because Syntax is already one of its stronger categories. Since Macro-F1 assigns equal importance to each class, the ablation shows that performance on the uncommon Syntax category can noticeably affect the aggregate score even though Syntax represents only a small fraction of the dataset. MF1(NS) is therefore used only as a sensitivity analysis, while the primary Macro-F1 continues to include all four outcome categories.
+
+Beyond detecting errors in code generated by other models, RQ2 also examines whether a model can recognize errors in its own outputs. Table~\ref{tab:self_detection} reports this self-error detection analysis. Self-Det. is the proportion of erroneous solutions generated by a model for which its subsequent prediction exactly matches the execution-derived reference set. The class-specific columns report detection within the model's own Functional, Runtime, and Syntax error subsets. The numerator and denominator are reported because each model produces a different number and distribution of errors. ND indicates that the model produced no reference error of that category in the evaluated test split.
+
+\begin{table}[htbp]
+\centering
+\caption{Self-error detection by generator model. Self-Det. reports exact-set detection over the model's own erroneous solutions. Class-specific cells report detected/reference counts. ND indicates that the model produced no reference error of that category.}
+\label{tab:self_detection}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Model} &
+\textbf{Self-Det.} &
+\textbf{Funct.} &
+\textbf{Runt.} &
+\textbf{Synt.} \\
+\midrule
+
+Qwen 3.8 27B
+& \scorecell{67.9}{\shortstack{67.9\%\\(55/81)}}
+& \scorecell{75.4}{\shortstack{75.4\%\\(52/69)}}
+& \scorecell{25.0}{\shortstack{25.0\%\\(3/12)}}
+& ND
+\\
+
+Gemma 3 4B
+& \scorecell{60.4}{\shortstack{60.4\%\\(87/144)}}
+& \scorecell{77.3}{\shortstack{77.3\%\\(102/132)}}
+& \scorecell{0.0}{\shortstack{0.0\%\\(0/30)}}
+& ND
+\\
+
+GLM 4.7 Flash 30B
+& \scorecell{55.0}{\shortstack{55.0\%\\(61/111)}}
+& \scorecell{65.6}{\shortstack{65.6\%\\(63/96)}}
+& \scorecell{20.0}{\shortstack{20.0\%\\(3/15)}}
+& \scorecell{100.0}{\shortstack{100.0\%\\(3/3)}}
+\\
+
+Qwen 2.5 Coder 7B
+& \scorecell{54.4}{\shortstack{54.4\%\\(49/90)}}
+& \scorecell{66.7}{\shortstack{66.7\%\\(46/69)}}
+& \scorecell{14.3}{\shortstack{14.3\%\\(3/21)}}
+& ND
+\\
+
+Ornith 1.5 35B
+& \scorecell{53.8}{\shortstack{53.8\%\\(63/117)}}
+& \scorecell{80.0}{\shortstack{80.0\%\\(48/60)}}
+& \scorecell{16.7}{\shortstack{16.7\%\\(4/24)}}
+& \scorecell{38.5}{\shortstack{38.5\%\\(15/39)}}
+\\
+
+Devstral Small 2 24B
+& \scorecell{52.3}{\shortstack{52.3\%\\(58/111)}}
+& \scorecell{64.4}{\shortstack{64.4\%\\(58/90)}}
+& \scorecell{9.1}{\shortstack{9.1\%\\(3/33)}}
+& ND
+\\
+
+Qwen 3 Coder 30B
+& \scorecell{42.3}{\shortstack{42.3\%\\(33/78)}}
+& \scorecell{51.5}{\shortstack{51.5\%\\(34/66)}}
+& \scorecell{0.0}{\shortstack{0.0\%\\(0/15)}}
+& ND
+\\
+
+Qwen 2.5 Coder 32B
+& \scorecell{33.3}{\shortstack{33.3\%\\(37/111)}}
+& \scorecell{36.9}{\shortstack{36.9\%\\(31/84)}}
+& \scorecell{19.4}{\shortstack{19.4\%\\(7/36)}}
+& ND
+\\
+
+Muse Glimmer 30B
+& \scorecell{19.0}{\shortstack{19.0\%\\(12/63)}}
+& \scorecell{25.9}{\shortstack{25.9\%\\(14/54)}}
+& \scorecell{25.0}{\shortstack{25.0\%\\(3/12)}}
+& ND
+\\
+
+Gemma 4 31B
+& \scorecell{13.6}{\shortstack{13.6\%\\(9/66)}}
+& \scorecell{6.7}{\shortstack{6.7\%\\(3/45)}}
+& \scorecell{16.7}{\shortstack{16.7\%\\(3/18)}}
+& \scorecell{33.3}{\shortstack{33.3\%\\(3/9)}}
+\\
+
+GPT-OSS 20B
+& \scorecell{5.3}{\shortstack{5.3\%\\(3/57)}}
+& \scorecell{15.7}{\shortstack{15.7\%\\(8/51)}}
+& \scorecell{0.0}{\shortstack{0.0\%\\(0/21)}}
+& ND
+\\
+
+\bottomrule
+\end{tabular}
+\end{table}
+
+Self-error detection varies substantially across the evaluated SLMs. Qwen 3.8 obtains the highest exact-set Self-Detection rate at 67.9\% (55/81), followed by Gemma 3 4B at 60.4\% (87/144). At the opposite end, GPT-OSS detects the complete error set for only 5.3\% (3/57) of its own erroneous solutions. This creates a particularly important contrast with RQ1: GPT-OSS is one of the strongest code generators, with 79.0\% Correct generation, but is the weakest model in exact-set self-error detection. Strong generation capability therefore does not imply that a model can reliably recognize the errors that remain in its own outputs.
+
+The class-specific self-evaluation results follow a pattern similar to general detection. Functional Errors are comparatively easier to recognize, with Ornith reaching 80.0\%, Gemma 3 4B reaching 77.3\%, and Qwen 3.8 reaching 75.4\%. Runtime self-detection remains low: Qwen 3.8 and Muse Glimmer each detect 3 of 12 Runtime cases, GLM detects 3 of 15, and Qwen 2.5 Coder 32B detects 7 of 36, while some models detect none. These percentages must be interpreted together with their denominators because the number of errors produced by each model differs substantially. GLM, for example, recognizes all of its own Syntax Errors, but this corresponds to only three cases.
+
+Overall, the evaluated SLMs exhibit heterogeneous and strongly class-dependent error-detection capabilities. Functional Errors can be recognized with relatively high recall by several models, whereas Runtime Errors remain difficult across the evaluated configurations. Syntax detection varies substantially between models and can noticeably affect Macro-F1 despite the small size of the class. The self-evaluation results further show that code-generation ability and error-recognition ability are distinct: a model that frequently generates correct code may still be unable to reliably identify the errors present in the smaller set of solutions that it gets wrong.

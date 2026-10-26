@@ -1,0 +1,46 @@
+\subsection{RQ3: To what extent can specialized SLMs improve the detection of errors in generated code?}
+
+In this research question, we evaluated how model specialization and its different approaches can improve SLMs' ability to detect code errors. Although one training parameter was the base model, the Gemma 4 E4B model yielded the best results; thus, all comparisons with the base model refer to the latter. Table~\ref{tab:rq3_specialization} presents the metrics of the best models for each optimization strategy. All approaches outperformed the base models in accuracy, and only the balanced approach, optimized for Macro F1, scored lower on this metric.
+
+\newcommand{\improvedcell}[1]{\cellcolor{green!20}#1}
+\newcommand{\worsecell}[1]{\cellcolor{red!20}#1}
+\newcommand{\uncertaincell}[1]{\cellcolor{gray!15}#1}
+
+\begin{table}[htbp]
+\centering
+\caption{Performance of the specialized detectors relative to the Gemma 4 E4B base model. The base reaches 45.9\% Accuracy and 37.1\% Macro-F1 on the paired subset. Values in parentheses indicate the difference in percentage points. Green cells indicate improvements whose paired bootstrap interval excludes zero, while gray cells indicate differences whose interval includes zero.}
+\label{tab:rq3_specialization}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Specialized Model} &
+\textbf{Accuracy} &
+\textbf{Macro-F1} \\
+\midrule
+
+Best Acc
+& \improvedcell{77.9 (+32.0)}
+& \improvedcell{51.0 (+13.9)}
+\\
+
+Weighted MF1
+& \improvedcell{73.6 (+27.7)}
+& \improvedcell{54.3 (+17.2)}
+\\
+
+Balanced Acc
+& \improvedcell{67.9 (+22.0)}
+& \uncertaincell{38.1 (+1.0)}
+\\
+
+Balanced MF1
+& \improvedcell{63.8 (+17.9)}
+& \uncertaincell{36.0 (-1.1)}
+\\
+
+\bottomrule
+\end{tabular}
+\end{table}
+
+The unbalanced search step showed better performance in both approaches. In accuracy optimization, the model achieved the highest recall rate for emph{Correct} among the compared SLMs, more than doubling the base model's results; however, this class was the most voluminous in the training data, which may have increased the model's tendency to predict it. Another point supporting this idea is that the model's accuracy on this class decreased. The largest drop in the trained model's accuracy occurred in detecting syntax errors, showing the greatest reduction among the observed classes. However, the model trained with the F1 Macro optimization showed a loss only in functional errors, but increased in all other classes.
+
+Training with some balanced classes performed significantly worse than training without balancing across all classes, indicating that, in this scenario, removing items from the training set was detrimental. The main loss is the total reduction in detecting emph{Syntax Error}; the model lost its ability to detect this class. This behavior persisted even after the inclusion of feedback informing the compiler result, in which the models that had emph{Syntax Error} in training managed to achieve a total recall of emph{Syntax Error}; however, only the model trained for better balancing between the F1-Scores of the classes achieved satisfactory performance, while the model optimized for accuracy failed to take advantage of the feedback.

@@ -1,0 +1,130 @@
+\subsection{RQ6: How does an iterative static-analysis feedback cycle affect the ability of language models to generate correct code?}
+
+\begin{table}[htbp]
+\centering
+\caption{Code generation under the iterative static-analysis protocol, compared with RQ1. Values are percentages and the second line in each outcome cell reports the change relative to RQ1. Green changes indicate an improvement in the corresponding outcome, while red changes indicate a deterioration. Avg Cyc is the mean number of cycles.}
+\label{tab:rq6_generation_delta}
+\setlength{\tabcolsep}{1pt}
+
+\newcommand{\better}[1]{\textcolor{green!55!black}{#1}}
+\newcommand{\worse}[1]{\textcolor{red!70!black}{#1}}
+\newcommand{\lightmodelrule}{%
+  \arrayrulecolor{black!15}\specialrule{0.25pt}{0.5pt}{0.5pt}\arrayrulecolor{black}%
+}
+
+\begin{tabular}{@{}>{\centering\arraybackslash}m{0.29\columnwidth}*{5}{>{\centering\arraybackslash}m{0.132\columnwidth}}@{}}
+\toprule
+\small\textbf{Model} &
+\scriptsize\textbf{Avg Cyc} &
+\scriptsize\textbf{Correct} &
+\scriptsize\textbf{Funct.} &
+\scriptsize\textbf{Runtime} &
+\scriptsize\textbf{Syntax} \\
+\midrule
+\multicolumn{6}{l}{\emph{Small language models}} \\
+\midrule
+\shortstack[c]{Gemma 4\\(31B)}
+& 1.29
+& \shortstack{82\\\better{+3}}
+& \shortstack{15\\0}
+& \shortstack{4\\0}
+& \shortstack{0\\\better{-3}} \\
+\lightmodelrule
+\shortstack[c]{GPT-OSS\\(20B)}
+& 1.46
+& \shortstack{80\\\better{+1}}
+& \shortstack{15\\\better{-2}}
+& \shortstack{4\\\better{-1}}
+& \shortstack{2\\\worse{+1}} \\
+\lightmodelrule
+\shortstack[c]{Muse Glimmer\\(30B)}
+& 1.41
+& \shortstack{79\\\worse{-2}}
+& \shortstack{16\\\worse{+1}}
+& \shortstack{4\\0}
+& \shortstack{2\\\worse{+2}} \\
+\lightmodelrule
+\shortstack[c]{Qwen 3.8\\(27B)}
+& 1.17
+& \shortstack{78\\\better{+2}}
+& \shortstack{19\\\better{-1}}
+& \shortstack{4\\\better{-1}}
+& \shortstack{0\\0} \\
+\lightmodelrule
+\shortstack[c]{Qwen 2.5 Coder\\(32B)}
+& 1.36
+& \shortstack{75\\\better{+8}}
+& \shortstack{20\\\better{-5}}
+& \shortstack{7\\\better{-2}}
+& \shortstack{0\\0} \\
+\lightmodelrule
+\shortstack[c]{Qwen 3 Coder\\(30B)}
+& 1.57
+& \shortstack{74\\\worse{-2}}
+& \shortstack{21\\\worse{+4}}
+& \shortstack{6\\\better{-1}}
+& \shortstack{0\\0} \\
+\lightmodelrule
+\shortstack[c]{Devstral Small 2\\(24B)}
+& 1.37
+& \shortstack{73\\\better{+2}}
+& \shortstack{22\\\better{-2}}
+& \shortstack{6\\\better{-1}}
+& \shortstack{0\\0} \\
+\lightmodelrule
+\shortstack[c]{Ornith 1.5\\(35B)}
+& 1.68
+& \shortstack{72\\\better{+6}}
+& \shortstack{19\\\worse{+1}}
+& \shortstack{6\\\better{-1}}
+& \shortstack{5\\\better{-6}} \\
+\lightmodelrule
+\shortstack[c]{Qwen 2.5 Coder\\(7B)}
+& 2.06
+& \shortstack{71\\\worse{-3}}
+& \shortstack{24\\\worse{+3}}
+& \shortstack{8\\0}
+& \shortstack{0\\0} \\
+\lightmodelrule
+\shortstack[c]{GLM 4.7 Flash\\(30B)}
+& 2.14
+& \shortstack{63\\\worse{-3}}
+& \shortstack{25\\\better{-4}}
+& \shortstack{5\\\better{-2}}
+& \shortstack{8\\\worse{+8}} \\
+\lightmodelrule
+\shortstack[c]{Gemma 3\\(4B)}
+& 1.43
+& \shortstack{61\\\worse{-2}}
+& \shortstack{34\\\worse{+1}}
+& \shortstack{8\\\better{-1}}
+& \shortstack{0\\0} \\
+\midrule
+\multicolumn{6}{l}{\emph{Large language models}} \\
+\midrule
+\shortstack[c]{DeepSeek V4.1\\Flash\\(552B)}
+& 1.14
+& \shortstack{81\\\better{+7}}
+& \shortstack{16\\\better{-1}}
+& \shortstack{5\\\better{-1}}
+& \shortstack{0\\\better{-6}} \\
+\lightmodelrule
+\shortstack[c]{MiMo V2.5\\(310B)}
+& 1.15
+& \shortstack{80\\\better{+7}}
+& \shortstack{16\\\better{-2}}
+& \shortstack{5\\\better{-2}}
+& \shortstack{0\\\better{-2}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+In this research question, we combined the other experiments from this work to observe how models' self-reflection with static tools can help produce correct code. Overall, performance was heterogeneous, with 6 models showing superior performance and 5 inferior performance in terms of correct code. However, the average increase of 3.79\% in \emph{Correct} is considerably greater than the average of -2.31\% in regression cases. This impact was felt mainly in the \emph{Runtime Error} class, with only one regression case, which was still less than 1\%.
+
+The classification of \emph{Correct}, as previously mentioned, presents a heterogeneous but generally positive case, with notable improvements in models such as Qwen 2.5 Coder and Ornith 1.5, which showed the greatest growth among the classes, but also in Gemma 4 31B, which had all cases that previously generated a \emph{Syntax Error} converted: 15 to \emph{Correct} and 3 to \emph{Functional Error}.
+
+One of the scenarios we observed with the greatest difficulty previously, the classification of \emph{Runtime Error}, was the one that had the greatest impact on the cycle; that is, even with the models and tools having difficulty finding runtime errors, its correction is the one that shows the least variation in new cases with the use of cycles and that showed progress in almost all scenarios.
+
+Finally, in the \emph{Syntax Error} class, the behavior did not change for most cases; however, 5 cases showed variation. The main negative variation in this class was in the GLM 4.7 Flash model, which increased by 8 percentage points, indicating that the model had greater difficulty without the interactive structure and became more erratic in its responses. Meanwhile, the main positive variation is found in Ornith 1.5, which previously showed the worst performance in this class; with the interactive cycle, self-evaluation, and the addition of tools, the model managed to reduce its performance by 6 percentage points. However, the model still struggled to generate code that met the requested syntax criteria, with 5\% of its generations outside the expected language standard.
+
+To evaluate this statistically, we applied McNemar's test to the first code generation execution without the interactive cycle and to the interactive cycle with tool use, grouping them into two classes: \emph{Correct} versus \emph{Not Correct}. In the tests, we used pairs of discordant tasks and adjusted the thirteen model-level $p$-valuesusing Holm's procedure. Among the SLMs, only Qwen 2.5 Coder 32B and Ornith 1.5 35B showed a statistically significant improvement in the proportion of correct codes, while the others did not show sufficient statistical evidence.

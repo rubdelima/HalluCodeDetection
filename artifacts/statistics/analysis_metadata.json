@@ -1,0 +1,54 @@
+{
+  "executed_at": "2026-09-20T16:35:56.591608-03:00",
+  "git_commit": "6fdcacd02ab08bd47c1fa2013e41c77db99d918f",
+  "seed": 20260920,
+  "bootstrap_resamples": 10000,
+  "permutation_resamples": 10000,
+  "python": "3.13.15",
+  "numpy": "2.4.5",
+  "scipy": "1.18.1",
+  "torch": "2.12.0+cu130",
+  "transformers": "5.8.1",
+  "inputs": [
+    {
+      "path": "data/results/evalplus/dataset_base.json",
+      "sha256": "0a85fdc4a0bc27304ba8dcb7b496abaa2fe1fa22e4bd1367bf50e90c0587b07e",
+      "bytes": 10944733
+    },
+    {
+      "path": "data/results/evalplus/phase1_opencode_baselines/dataset_base.json",
+      "sha256": "4a663dbb585b9c94b78145d4cc8439d8241f12061770483bf060d4cc9bacbac4",
+      "bytes": 1787502
+    },
+    {
+      "path": "data/results/evalplus/evaluation_results.jsonl",
+      "sha256": "8eab8b396ff2c129d0b1e4005e1f89322fd5af779131f0208615d09bfc89bf47",
+      "bytes": 94534939
+    },
+    {
+      "path": "data/results/evalplus/phase5/static_analysis_results.jsonl",
+      "sha256": "3372bfa646178f6df6a03328f886ee0e177fedcc6009ad4b8f2642491f3cb7b5",
+      "bytes": 13493253
+    },
+    {
+      "path": "data/results/evalplus/phase6/generation_with_tools.jsonl",
+      "sha256": "6c42f42c5e550138d2578a4ae02ae6fe9ec6087a9ce2d79b37dcd25ece199ad7",
+      "bytes": 3979040
+    },
+    {
+      "path": "data/results/evalplus/phase7/classification_with_tools.jsonl",
+      "sha256": "9eccb5f7176416bb947e1b3dc34e3094a255d82e377426d43f226d1a51fb8afc",
+      "bytes": 3476746
+    }
+  ],
+  "optional_inputs": [
+    {
+      "path": "/mnt/ssd/HalluCode/results/phase6_local_tools/generation_with_tools.jsonl",
+      "available": false
+    },
+    {
+      "path": "/mnt/ssd/HalluCode/results/phase7_local_tools/classification_with_tools.jsonl",
+      "available": false
+    }
+  ]
+}

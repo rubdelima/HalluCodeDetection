@@ -1,0 +1,22 @@
+\subsection{RQ4: How do static-analysis techniques compare with SLMs in detecting errors in generated code?}
+
+This research question compares LLMs and static techniques for error detection in code. This analysis is restricted only to the analysis of the classes \emph{Syntax Error} and \emph{Runtime Error}. For this analysis, we compare \emph{Syntax Error} detection models with the language compiler's tool, which serves as an accurate ground truth. For the \emph{Runtime Error} analysis, we use \emph{Pyright} to detect some patterns observed in the experiments. Table ~\ref{tab:rq4_tools} shows each technique's performance for its respective function. The \emph{Global} column represents the total set of errors collected in the experiments, while the \emph{Test} column refers only to the test scenario used to compare the analyses with the models.
+
+
+\begin{table}[htbp]
+\centering
+\caption{Standalone static-tool detection on the held-out test split and on the complete generated set. Values report detected/reference cases and recall.}
+\label{tab:rq4_tools}
+\begin{tabular}{llrr}
+\toprule
+\textbf{Tool} & \textbf{Target} & \textbf{Test} & \textbf{Global} \\
+\midrule
+Python compile & Syntax & 17/17 (100.0\%) & 90/90 (100.0\%) \\
+Pyright & Runtime & 7/79 (8.9\%) & 45/408 (11.0\%) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+As a main result of the Syntax Error detection comparison, although GLM 4.7 Flash achieves a detection rate of over 94\%, it is still less accurate than a static algorithm compiled from the model itself.
+
+The main highlight of using SLMs is in investigating Runtime Errors because, unlike the previous task, the comparison is with a tool that does not always perform detection. Although Runtime Error detection was the main difficulty among the models, with no model performing above 33\%, the models' analyses were superior to those of static tools. This indicates that, although the models cannot find these types of errors, they still outperform static tools.

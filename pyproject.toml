@@ -37,6 +37,7 @@ dependencies = [
     "pylint>=4.0.8",
     "semgrep>=1.79.0",
     "crosshair-tool>=0.0.110",
+    "scipy>=1.18.1",
 ]
 
 [tool.mypy]

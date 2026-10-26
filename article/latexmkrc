@@ -1,4 +1,4 @@
 $pdf_mode = 5; # XeLaTeX
-$bibtex_use = 2; # Run BibTeX whenever the bibliography needs updating.
+$bibtex_use = 1; # Run BibTeX when the .bbl is missing or out of date.
 $interaction = 'nonstopmode';
 $halt_on_error = 1;

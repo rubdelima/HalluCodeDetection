@@ -16,7 +16,9 @@ from tqdm import tqdm
 from src.constants import HalluCodeDetectionConfig
 from src.core import ui
 from src.dataset.judge_dataset import load_hallucination_dataset
+from src.dataset.load import load_all_examples
 from src.dataset.utils import append_jsonl, load_jsonl
+from src.evaluations.classify import build_candidate_code
 from src.schemas.dataset import BaseResultRow
 from src.static_analysis.tools import (
     ToolFinding,
@@ -57,13 +59,18 @@ def _load_samples(config: HalluCodeDetectionConfig, limit: int | None) -> list[S
         raise RuntimeError("The test split is empty; verify the Phase-2 judge data and dataset configuration.")
 
     unique: dict[str, Sample] = {}
+    # Analyze the same reconstructed source that the EvalPlus harness executes
+    # and that phases 6 and 7 show to the model, not the raw model output.
+    examples_by_key = load_all_examples(config.dataset_building_config.datasets_base)
     for row in base_rows:
         sample_id = _sample_id(row)
         task_id = row.task_id or f"{row.benchmark}/{row.benchmark_id}"
+        example = examples_by_key.get((row.benchmark, row.benchmark_id))
+        source = build_candidate_code(example, row.code) if example is not None else row.code
         unique[sample_id] = Sample(
             sample_id=sample_id,
             task_id=task_id,
-            source=row.code,
+            source=source,
             levels=frozenset(level.level_name for level in row.levels),
             is_test=task_id in test_task_ids,
         )

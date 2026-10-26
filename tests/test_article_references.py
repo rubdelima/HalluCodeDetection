@@ -51,6 +51,36 @@ class ArticleReferenceCheckTests(unittest.TestCase):
         )
         self.assertTrue(any("duplicate BibTeX key" in issue.message for issue in issues))
 
+    def test_uncited_bibtex_entry_is_reported(self) -> None:
+        issues, *_ = self.validate_text(
+            "Text \\cite{used}.\n",
+            "@article{used, title={Used}}\n@article{unused, title={Unused}}\n",
+        )
+        self.assertTrue(any("'unused' is not cited" in issue.message for issue in issues))
+
+    def test_main_file_citations_are_checked(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_name:
+            root = Path(temp_name)
+            sections = root / "sections"
+            sections.mkdir()
+            (sections / "sample.tex").write_text("Section text.\n", encoding="utf-8")
+            main = root / "main.tex"
+            main.write_text("Introduction \\cite{mainkey}.\n", encoding="utf-8")
+            bib = root / "refs.bib"
+            bib.write_text("@article{mainkey, title={Main}}\n", encoding="utf-8")
+            issues, tex_count, citation_count, entry_count = validate(
+                sections, bib, main_path=main
+            )
+        self.assertEqual((tex_count, citation_count, entry_count), (2, 1, 1))
+        self.assertFalse(issues)
+
+    def test_nocite_star_keeps_all_bibliography_entries(self) -> None:
+        issues, *_ = self.validate_text(
+            "Text \\nocite{*}.\n",
+            "@article{retained, title={Retained}}\n",
+        )
+        self.assertFalse(issues)
+
 
 if __name__ == "__main__":
     unittest.main()

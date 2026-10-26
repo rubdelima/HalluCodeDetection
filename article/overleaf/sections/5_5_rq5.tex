@@ -1,0 +1,62 @@
+\subsection{RQ5: How does static-analysis feedback affect the ability of language models to detect errors in generated code?}
+\label{sec:rq5}
+
+This RQ evaluates how error-detection behavior changes when the same generated code used in RQ2 is accompanied by static-analysis feedback. The task, candidate code, classification prompt, temperature, output schema, and execution-derived reference remain unchanged, with the additional tool evidence being the only difference between the detector inputs. Table~\ref{tab:rq5_detection_delta} reports the resulting metrics and their changes relative to RQ2.
+
+\begin{table*}[htbp]
+\centering
+\caption{Detection results with static-analysis feedback, compared with the no-feedback setting of RQ2. Values are percentages and the value in parentheses is the change relative to RQ2.}
+\label{tab:rq5_detection_delta}
+\begin{tabular}{lrrrrrr}
+\toprule
+\textbf{Model} & \textbf{Acc} & \textbf{MF1} & \textbf{CR} & \textbf{FR} & \textbf{RR} & \textbf{SR} \\
+\midrule
+\multicolumn{7}{l}{\emph{General-purpose models}} \\
+\midrule
+Muse Glimmer 30B & \scorecell{79}{79 (+6)} & \scorecell{71}{71 (+17)} & \scorecell{89}{89 (+6)} & \scorecell{58}{58 (+3)} & \scorecell{25}{25 (-2)} & \scorecell{100}{100 (+47)} \\
+Gemma 4 31B & \scorecell{77}{77 (+4)} & \scorecell{66}{66 (+18)} & \scorecell{87}{87 (+3)} & \scorecell{56}{56 (+6)} & \scorecell{23}{23 (-1)} & \scorecell{100}{100 (+22)} \\
+Qwen 3.8 27B & \scorecell{69}{69 (+7)} & \scorecell{56}{56 (+13)} & \scorecell{73}{73 (+10)} & \scorecell{69}{69 (-6)} & \scorecell{9}{9 (-4)} & \scorecell{100}{100 (+35)} \\
+Qwen 2.5 Coder 7B & \scorecell{37}{37 (-26)} & \scorecell{47}{47 (+13)} & \scorecell{24}{24 (-49)} & \scorecell{89}{89 (+43)} & \scorecell{8}{8 (+5)} & \scorecell{100}{100 (+82)} \\
+Qwen 2.5 Coder 32B & \scorecell{43}{43 (-18)} & \scorecell{50}{50 (+9)} & \scorecell{44}{44 (-27)} & \scorecell{47}{47 (+9)} & \scorecell{9}{9 (-3)} & \scorecell{100}{100 (+24)} \\
+Qwen 3 Coder 30B & \scorecell{52}{52 (-8)} & \scorecell{46}{46 (+9)} & \scorecell{46}{46 (-18)} & \scorecell{86}{86 (+20)} & \scorecell{4}{4 (-5)} & \scorecell{100}{100 (+78)} \\
+Ornith 1.5 35B & \scorecell{59}{59 (+2)} & \scorecell{52}{52 (+16)} & \scorecell{55}{55 (-1)} & \scorecell{84}{84 (+6)} & \scorecell{8}{8 (+0)} & \scorecell{100}{100 (+62)} \\
+Devstral Small 2 24B & \scorecell{56}{56 (+2)} & \scorecell{53}{53 (+15)} & \scorecell{54}{54 (-1)} & \scorecell{71}{71 (+7)} & \scorecell{11}{11 (-6)} & \scorecell{100}{100 (+65)} \\
+GLM 4.7 Flash 30B & \scorecell{46}{46 (-4)} & \scorecell{45}{45 (+7)} & \scorecell{37}{37 (-13)} & \scorecell{88}{88 (+24)} & \scorecell{9}{9 (-17)} & \scorecell{100}{100 (+6)} \\
+Gemma 4 E2B IT & \scorecell{50}{50 (+2)} & \scorecell{49}{49 (+16)} & \scorecell{48}{48 (+0)} & \scorecell{68}{68 (+3)} & \scorecell{10}{10 (-6)} & \scorecell{94}{94 (+88)} \\
+Gemma 4 E4B IT & \scorecell{46}{46 (+0)} & \scorecell{52}{52 (+15)} & \scorecell{35}{35 (-3)} & \scorecell{93}{93 (+6)} & \scorecell{20}{20 (-11)} & \scorecell{100}{100 (+50)} \\
+Gemma 3 4B IT & \scorecell{36}{36 (-2)} & \scorecell{46}{46 (+19)} & \scorecell{25}{25 (-5)} & \scorecell{83}{83 (+1)} & \scorecell{8}{8 (-3)} & \scorecell{94}{94 (+88)} \\
+Gemma 3 4B & \scorecell{36}{36 (+3)} & \scorecell{47}{47 (+24)} & \scorecell{24}{24 (+2)} & \scorecell{82}{82 (-3)} & \scorecell{9}{9 (+3)} & \scorecell{100}{100 (+82)} \\
+GPT-OSS 20B & \scorecell{31}{31 (+6)} & \scorecell{50}{50 (+11)} & \scorecell{26}{26 (+8)} & \scorecell{52}{52 (-4)} & \scorecell{27}{27 (-6)} & \scorecell{100}{100 (+27)} \\
+\midrule
+\multicolumn{7}{l}{\emph{Fine-tuned models}} \\
+\midrule
+Best Acc & \scorecell{77}{77 (+0)} & \scorecell{68}{68 (+17)} & \scorecell{85}{85 (+0)} & \scorecell{65}{65 (-4)} & \scorecell{19}{19 (-9)} & \scorecell{100}{100 (+88)} \\
+Weighted MF1 & \scorecell{76}{76 (+2)} & \scorecell{68}{68 (+14)} & \scorecell{79}{79 (+4)} & \scorecell{75}{75 (-3)} & \scorecell{20}{20 (-13)} & \scorecell{100}{100 (+31)} \\
+Balanced Acc & \scorecell{67}{67 (-1)} & \scorecell{36}{36 (-2)} & \scorecell{71}{71 (-3)} & \scorecell{71}{71 (+5)} & \scorecell{10}{10 (-5)} & \scorecell{0}{0 (+0)} \\
+Balanced MF1 & \scorecell{61}{61 (-3)} & \scorecell{56}{56 (+20)} & \scorecell{62}{62 (-7)} & \scorecell{74}{74 (+8)} & \scorecell{7}{7 (-7)} & \scorecell{81}{81 (+81)} \\
+\midrule
+\multicolumn{7}{l}{\emph{Large models}} \\
+\midrule
+DeepSeek V4.1 Flash & \scorecell{76}{76 (+1)} & \scorecell{64}{64 (+13)} & \scorecell{88}{88 (-2)} & \scorecell{55}{55 (+4)} & \scorecell{10}{10 (-5)} & \scorecell{100}{100 (+65)} \\
+MiMo V2.5 & \scorecell{47}{47 (-4)} & \scorecell{47}{47 (+8)} & \scorecell{37}{37 (-10)} & \scorecell{90}{90 (+10)} & \scorecell{9}{9 (-13)} & \scorecell{100}{100 (+4)} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+The clearest effect of static-analysis feedback is observed for \emph{Syntax Error}. Eighteen of the 20 evaluated configurations reach at least 94\% Syntax Recall after receiving the tool output. The only exceptions are the two balanced specialized detectors, both trained without Syntax examples. For many models, the change is substantial: Gemma 3 4B and Qwen 2.5 Coder 7B increase from 17.6\% to 100.0\%, Qwen 3 Coder 30B from 21.6\% to 100.0\%, and Gemma 4 E2B IT and Gemma 3 4B IT increase by approximately 88 percentage points. Across all evaluated configurations, the average increase in Syntax Recall is approximately 51.3 percentage points. Thus, when deterministic evidence is directly aligned with the target outcome, most models are able to incorporate it effectively.
+
+The two balanced detectors provide an important exception to this pattern. Both were trained without Syntax examples, yet they react very differently to the same explicit compilation evidence. Balanced Acc remains at 0.0\% Syntax Recall, whereas Balanced MF1 increases from 0.0\% to approximately 81\%. In contrast, Best Acc and Weighted MF1 both reach 100.0\%. The availability of an explicit signal is therefore not sufficient by itself to determine the resulting prediction. The behavior acquired during specialization, including the training objective and exposure to the target class, influences how the model maps external evidence to its output labels.
+
+The behavior for \emph{Runtime Error} is notably different. Runtime Recall decreases in 17 of the 20 evaluated configurations, increases in only two, and remains unchanged in one. Across the evaluated conditions, the average change is approximately -5.4 percentage points. This occurs despite Pyright providing information specifically intended to support Runtime detection. A plausible interpretation is related to the limited coverage identified in RQ4: Pyright detects only 8.9\% of the held-out Runtime failures. Consequently, most true Runtime cases are accompanied by feedback in which Pyright reports no mapped runtime-related diagnostic. Although the prompt explicitly states that the absence of a diagnostic does not establish the absence of an error, this negative tool signal may still influence the model away from predicting \emph{Runtime Error}. The experiment does not isolate this mechanism directly, but the observed pattern is consistent with models assigning excessive weight to incomplete static evidence.
+
+This contrast is visible in individual models. GLM 4.7 Flash loses 17.3 percentage points of Runtime Recall, Weighted MF1 loses 12.7, MiMo V2.5 loses 12.5, Gemma 4 E4B IT loses 11.4, and Best Acc loses 8.9. Only Gemma 3 4B and Qwen 2.5 Coder 7B show clear increases. Static evidence therefore behaves differently depending on its coverage: compilation provides a nearly complete signal for Syntax and is followed by a large improvement, whereas the sparse Pyright signal does not produce the same effect for Runtime and frequently coincides with worse Runtime detection.
+
+Static feedback also systematically affects predictions for classes that neither tool directly determines. Correct Recall decreases in 12 of the 20 configurations, while Functional Recall increases in 15. The average changes are approximately -5.3 percentage points for Correct Recall and +6.8 points for Functional Recall. This pattern is consistent with a redistribution in which models become more likely to treat a candidate as functionally incorrect after receiving static-analysis information, even though compilation and Pyright provide no direct evidence about whether the implementation satisfies the task specification.
+
+Qwen 2.5 Coder 7B provides the clearest example of this behavior. Its Correct Recall decreases by 48.8 percentage points while Functional Recall increases by 42.6 points. At the same time, Runtime Recall increases by 5.1 points and Syntax Recall increases by 82.4 points. Its Exact-set Accuracy consequently decreases by approximately 26 points despite large improvements in several error categories. Qwen 2.5 Coder 32B and Qwen 3 Coder show similar, although less extreme, shifts from Correct toward Functional predictions. The decrease in Accuracy in these cases therefore does not represent a uniform loss of detection capability, but a substantial change in the model's decision behavior across classes.
+
+Macro-F1 also increases in 19 of the 20 evaluated configurations, with an average increase of approximately 13.6 percentage points. This result should not be interpreted as a uniform improvement across the error taxonomy. A major common contributor is the large increase in Syntax Recall, which rises by more than 50 percentage points on average and receives equal weight in the macro metric despite being a rare class. Runtime Recall, in contrast, decreases for most models, while Correct and Functional predictions frequently shift in opposite directions. Exact-set Accuracy consequently presents a much less uniform pattern, increasing in 10 configurations, decreasing in eight, and remaining approximately unchanged in two.
+
+GLM 4.7 Flash illustrates why the Macro-F1 increase cannot be explained only by improved Syntax detection. The model already reaches 94.1\% Syntax Recall without feedback, so the tool raises this value by only approximately six percentage points. Nevertheless, its Macro-F1 increases by seven points. The principal change instead occurs in Functional Recall, which increases by approximately 24 points, while Correct Recall decreases by 13 points and Runtime Recall by 17 points. Thus, even when the direct syntactic contribution is small, static feedback can substantially alter decisions about classes for which the tools provide no direct information.
+
+Overall, static-analysis feedback changes model behavior much more broadly than the classes directly targeted by the tools. Compilation provides a strong and consistently useful Syntax signal, while the incomplete Runtime evidence from Pyright frequently coincides with reduced Runtime Recall. At the same time, many models shift predictions from \emph{Correct} toward \emph{Functional Error}, demonstrating that tool output can influence judgments about properties that the tools do not evaluate. The contrasting behavior of the balanced specialized models further shows that the ability to exploit external evidence depends on the detector's learned decision behavior. Static feedback therefore does not act as a simple additional source of correct labels: its effect depends both on the coverage of the underlying tool and on how each model transforms that evidence into a classification.
